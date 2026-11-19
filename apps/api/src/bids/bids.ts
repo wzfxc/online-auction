@@ -1,6 +1,6 @@
 import { and, desc, eq, lt } from 'drizzle-orm';
 import {
-  calcFee, maskName, minNextBid, PAYMENT_WINDOW_HOURS, placeBidSchema, resolveBid,
+  calcFee, endsAtAfterBid, maskName, minNextBid, PAYMENT_WINDOW_HOURS, placeBidSchema, resolveBid,
   type BidRejection, type LotBidState,
 } from '@auction/shared';
 import type { Clock } from '../common/clock/clock.js';
@@ -94,9 +94,17 @@ export class BidService {
           await tx.delete(bidderMaxes).where(and(eq(bidderMaxes.lotId, lotId), eq(bidderMaxes.userId, res.outbidUserId)));
           await releaseDeposit(tx, res.outbidUserId, lotId, now);
         }
+        // lockBiddable guarantees endsAt is set; anti-sniping may only move it later.
+        const endsAt = endsAtAfterBid(lot.endsAt!, now);
+        if (endsAt.getTime() !== lot.endsAt!.getTime()) {
+          await tx.insert(lotEvents).values({
+            lotId, actorId: user.id, type: 'extended', createdAt: now,
+            payload: { endsAt: endsAt.toISOString() },
+          });
+        }
         await tx.update(lots).set({
           currentPrice: res.price, bidCount: lot.bidCount + res.steps.length, leaderId: res.leader.userId,
-          lastSeq: seq, updatedAt: now,
+          lastSeq: seq, endsAt, updatedAt: now,
         }).where(eq(lots.id, lotId));
 
         const body: BidResultDto = {
