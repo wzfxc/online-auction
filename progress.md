@@ -5,7 +5,7 @@
 | --- | --- | --- |
 | 0 | Аудит, план, CLAUDE.md, progress.md | ✅ |
 | 1 | Каркас монорепо + CI | ✅ |
-| 2 | Docker compose, інфраструктура | ⏳ |
+| 2 | Docker compose, інфраструктура | ✅ (сервіси застосунку не збиралися: це заглушки) |
 | 3 | Схема БД, міграції | ⬜ |
 | 4 | Гроші/проводки/wallet/Clock/помилки/auth/idempotency | ⬜ |
 | 5 | Платіжна заглушка | ⬜ |
@@ -81,9 +81,11 @@
 | D12 | Резерв не досягнуто | `ended_unsold`, залоги звільняються |
 | D13 | Валюта | UAH, `bigint` копійки |
 | D14 | Втрата Redis | Postgres — джерело правди; sweeper по БД; BullMQ лише прискорює |
+| D15 | Образ MinIO | `minio/minio` недоступний (pull denied на Docker Hub і quay), використано `chainguard/minio`; healthcheck немає (немає shell), клієнти ретраять підключення |
 
 ## Журнал комітів
 | Коміт | Опис |
 | --- | --- |
 | (етап 0) | `chore: audit, plan, CLAUDE.md, progress.md` |
 | (етап 1) | `chore: monorepo scaffold, lint rules, CI, money rules in shared` |
+| (етап 2) | `chore: docker compose, nginx, .env.example` |
