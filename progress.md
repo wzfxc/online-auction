@@ -89,3 +89,4 @@
 | (етап 0) | `chore: audit, plan, CLAUDE.md, progress.md` |
 | (етап 1) | `chore: monorepo scaffold, lint rules, CI, money rules in shared` |
 | (етап 2) | `chore: docker compose, nginx, .env.example` |
+| (етап 2, fix) | `fix: bind published compose ports to loopback` |
