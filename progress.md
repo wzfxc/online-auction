@@ -94,6 +94,10 @@
 | D25 | Worker | Звичайний Node-процес (без Nest і BullMQ): цикли-свіпери по БД (пошук 1 с, закриття 1 с, неоплата, автопідтвердження доставки 7 дн., оренди модерації, фото, листи, нагадування, звірка платежів) із compare-and-set/SKIP LOCKED у сервісах; кілька worker безпечні, втрата Redis нічого не змінює (D14). Листи відправляються через SMTP у Mailpit (`SmtpEmailSender`). Сесії платіжної заглушки зберігаються в Postgres (`payment_stub_sessions`), тому доступні на обох репліках `api` та у `worker` |
 | D26 | Сид | Історичні дані сиду (завершені/неоплачені продажі, ставки) — лише дані без проводок ledger, тому звірка залишається нульовою; ledger-підкріплені лише гаманці демо-покупців `buyer1..buyer10@auction.test` (50 000 ₴). Логіни: `buyer<N>@auction.test` (N ≤ 7996), `seller<N>` (≤ 2000), `moderator1..3`, `finance1`; пароль `password123`. Фото-заглушки (згенеровані sharp, 12 варіантів) — по одному на активні й `in_review` лоти (5 100 об'єктів у MinIO). Тести int запускаються на БД з `TEST_DATABASE_URL` (за відсутності — на dev-БД `auction`, яку вони перестворюють) |
 | D19 | Стан платежу | `succeeded` термінальний і виграє в `failed`/`expired`; кредит рівно раз (блок рядка + `effectKey topup:<id>` + дедуп за `provider_event_id`); `failed`/`expired` лише з `pending`; `created_at` платежу з `Clock`. Сесії заглушки in-memory (одна інстанція) |
+| D27 | Rate limiting і проксі | `nginx.conf` перезаписує `X-Forwarded-For` на `$remote_addr`; Express використовує `trust proxy = 1`. Глобальний `RateLimitGuard` на Redis (атомарний Lua fixed-window з fail-open при збої чи `FLUSHALL` Redis): `auth` (15/хв за `ip:<clientIp>`), `bid` (60/хв за `user:<id>`), інші мутації (20/хв), `read` (180/хв), `@SkipThrottle()` для `/health` і вебхуків; `429 RATE_LIMIT_EXCEEDED` + `Retry-After` |
+| D28 | Безпека медіа і сесій | `confirmUpload` перевіряє магічні байти й формат через `sharp`, фіксує `sha256` та переносить об'єкт із клієнтського `raw/` у незмінний серверний `verified/` (`processPhoto` перевіряє `sha256`); `POST /auth/logout` відкликає `jti` в Postgres (`revoked_tokens`) для HTTP і Socket.IO |
+| D29 | Другий шанс, заглушка, міграції, активні лоти | `ClosingService.nextOffer` використовує `DISTINCT ON (user_id) ... ORDER BY max_amount DESC, seq ASC` (час досягнення максимуму, а не найпершої ставки); `StubPaymentProvider.resolve` блокує оплату простроченої сесії (`409 PAYMENT_SESSION_EXPIRED`); `runMigrations` серіалізовано через `pg_advisory_lock`; активний лот із `bidCount === 0` дозволяє повне редагування, після першої ставки — лише `append`; FK (`23503`), null-байти (`22021`) та переповнення меж → `400 VALIDATION_ERROR` |
+| D30 | Веб, інфра, CI | Пакетні прев'ю каталогу через `GET /media/thumbnails` (усунуто N+1), валідація/нормалізація URL-параметрів каталогу, видима валідація форми продавця, повна i18n `uk`/`en`/`pl`, `--frozen-lockfile` у `node.Dockerfile`, `127.0.0.1` у `.env.example`, а також `@auction/web build` і `e2e` у CI |
 
 ## Журнал комітів
 | Коміт | Опис |
@@ -122,4 +126,8 @@
 | (етапи 15, 18) | `feat(web): nextjs 15 frontend with live bidding, cabinets, uk/en/pl i18n, and openapi path params` |
 | (етап 19) | `test(e2e): playwright e2e suite against compose stack and ipv4 healthchecks` |
 | (етап 20) | `docs: add README, acceptance script and final verification sign-off` |
+| `02fed1e` | `feat(security): add distributed Redis rate limiting, proxy hardening, S3 verification, and JWT logout` |
+| `67329e2` | `fix(api): serialize migrations, enforce stub TTL, fix tie-break, bounds and active-lot edits` |
+| `8680497` | `fix(web): eliminate catalog N+1 thumbnails, add seller form validation, normalize URL params and complete i18n` |
+| `32e29dd` | `chore(ci): add web build and e2e to CI, use frozen lockfile in Dockerfile, bind 127.0.0.1 in .env.example` |
 
