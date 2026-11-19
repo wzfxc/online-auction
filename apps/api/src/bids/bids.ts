@@ -122,6 +122,8 @@ export class BidService {
         }
         const now = this.clock.now();
         const price = lot.buyNowPrice;
+        // Same funds gate as a bid: otherwise anyone without money could lock the lot for the payment window.
+        await holdDepositForMax(tx, user.id, lotId, price);
         const fee = calcFee(price);
         const payDueAt = new Date(now.getTime() + PAYMENT_WINDOW_HOURS * HOUR_MS);
         const seq = lot.lastSeq + 1;

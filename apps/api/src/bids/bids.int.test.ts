@@ -130,17 +130,26 @@ describe('placing bids', () => {
 describe('buy now', () => {
   it('moves the lot to awaiting_payment and creates the sale', async () => {
     const lotId = await newLot({ buyNowPrice: 90_000 });
-    const a = await newUser('buyer');
+    const a = await newUser('buyer', 1_000_000);
     const r = await svc.buyNow(a, lotId, key());
     expect(r.body).toMatchObject({ price: 90_000, fee: 4_500 });
+    expect((await getBalance(db as never, a.id)).held).toBe(9_000);
     const [lot] = await db.select().from(lots).where(eq(lots.id, lotId));
     expect(lot!.status).toBe('awaiting_payment');
+  });
+
+  it('without funds for the deposit → 422 and the lot stays active', async () => {
+    const lotId = await newLot({ buyNowPrice: 90_000 });
+    const poor = await newUser('buyer', 100);
+    await expect(svc.buyNow(poor, lotId, key())).rejects.toMatchObject({ status: 422, code: 'INSUFFICIENT_FUNDS' });
+    const [lot] = await db.select().from(lots).where(eq(lots.id, lotId));
+    expect(lot!.status).toBe('active');
   });
 
   it('racing a first bid: exactly one wins, the other gets 409', async () => {
     for (let round = 0; round < 5; round++) {
       const lotId = await newLot({ buyNowPrice: 90_000 });
-      const buyer = await newUser('buyer');
+      const buyer = await newUser('buyer', 1_000_000);
       const bidder = await newUser('buyer', 1_000_000);
       const [x, y] = await Promise.allSettled([
         svc.buyNow(buyer, lotId, key()),
