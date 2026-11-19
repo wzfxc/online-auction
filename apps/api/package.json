@@ -11,6 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "gen:openapi": "tsx scripts/gen-openapi.ts",
+    "seed": "tsx src/seed/cli.ts",
     "start": "tsx src/main.ts"
   },
   "dependencies": {

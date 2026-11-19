@@ -1,4 +1,5 @@
 import { Meilisearch } from 'meilisearch';
+import { sql } from 'drizzle-orm';
 import { SystemClock } from '../common/clock/clock.js';
 import { ClosingService } from '../closing/closing.js';
 import { loadEnv } from '../config.js';
@@ -11,6 +12,7 @@ import { SmtpEmailSender } from '../notifications/smtp.js';
 import { PaymentService } from '../payments/payments.js';
 import { StubPaymentProvider } from '../payments-stub/provider.js';
 import { SalesService } from '../sales/sales.js';
+import { runSeed } from '../seed/seed.js';
 import { SearchIndexer } from '../search/indexer.js';
 import { startLoops, type Loop } from './loops.js';
 
@@ -32,6 +34,16 @@ async function main(): Promise<void> {
   const indexer = new SearchIndexer(db, clock, meili);
   await indexer.ensureIndex();
 
+  if (env.SEED_ON_START === 'true') {
+    const summary = await runSeed(db, pool, clock.now(), storage);
+    console.log('seed', summary);
+    if (summary.seeded) {
+      // The bulk insert queued every lot in the outbox; one rebuild is much cheaper than draining 50k rows in batches.
+      await db.execute(sql`update search_outbox set processed_at = now() where processed_at is null`);
+      console.log('seed: reindexed', await indexer.reindexAll(), 'lots');
+    }
+  }
+
   const closing = new ClosingService(db, clock);
   const sales = new SalesService(db, clock);
   const moderation = new ModerationService(db, clock);
@@ -46,6 +58,17 @@ async function main(): Promise<void> {
   });
   const payments = new PaymentService(db, clock, provider, env.PAYMENT_WEBHOOK_SECRET);
 
+  /** Keeps draining while a backlog exists (bounded per tick) so search lag stays small after bursts. */
+  const drainSearch = async (): Promise<number> => {
+    let total = 0;
+    for (let i = 0; i < 20; i++) {
+      const n = await indexer.drain();
+      total += n;
+      if (n === 0) break;
+    }
+    return total;
+  };
+
   const processPhotos = async (): Promise<number> => {
     const ids = await media.findUnprocessed();
     for (const id of ids) await media.processPhoto(id);
@@ -53,7 +76,7 @@ async function main(): Promise<void> {
   };
 
   const loops: Loop[] = [
-    { name: 'search-drain', intervalMs: SECOND, run: () => indexer.drain() },
+    { name: 'search-drain', intervalMs: SECOND, run: drainSearch },
     { name: 'close-ended-lots', intervalMs: SECOND, run: () => closing.sweepEndedLots() },
     { name: 'overdue-sales', intervalMs: 10 * SECOND, run: () => closing.sweepOverdueSales() },
     { name: 'auto-confirm-sales', intervalMs: 30 * SECOND, run: () => sales.sweepAutoConfirmSales() },

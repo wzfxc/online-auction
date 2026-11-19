@@ -21,7 +21,7 @@
 | 14б | Продажі й довідники для веба | ✅ (SalesService: оплата виграшу з гаманця в межах 48 год із заліком залогу та проводками подвійного запису, відправка з трек-номером, підтвердження отримання + свіпер автопідтвердження через 7 днів, виплата продавцю за вирахуванням комісії D3; приховування переможця до оплати; обране + нагадування за 1 год; історія гаманця; «мої лоти» та сума до виплати; списки категорій/міст; повторне відкриття `ended_unsold` → `draft`; фільтр `noBids` у пошуку; контролери + OpenAPI + клієнт + int-тести) |
 | 15 | Веб | ⬜ (apps/web містить лише package.json) |
 | 16 | Звіти, звірка | ✅ (`ReportService` + `ReportsController` `/reports/period`, `/reports/reconciliation`: оборот, комісія, частка неоплачених виграшів, розбивка по категоріях < 500 мс за 90 днів з індексом `sales(created_at, status)`; звірка: сума проводок = 0, баланси гаманців = сумі проводок, розбіжності з платіжною заглушкою; int-тести) |
-| 17 | Сид | ⬜ |
+| 17 | Сид | ✅ (`apps/api/src/seed/seed.ts`: set-based SQL, повний обсяг 10 000 користувачів / 30 категорій / 15 міст / 50 000 лотів (5 000 активних, 200 закінчуються за годину, 100 на модерації) / 500 000 ставок / 5 100 фото-заглушок за ~68 с; ідемпотентний (маркер `seed:v1` у `job_effects` в одній транзакції з даними + advisory lock для кількох worker); запуск у worker при `SEED_ON_START=true` з подальшим `reindexAll`; ручний `pnpm --filter @auction/api seed`; int-тест: обсяги, ідемпотентність, паралельні запуски, баланс ledger, реальна ставка на засіяному лоті) |
 | 18 | Локалізація | ⬜ |
 | 19 | e2e | ⬜ |
 | 20 | Фінальна перевірка | ⬜ |
@@ -92,6 +92,7 @@
 | D23 | Шина живих оновлень | Postgres `NOTIFY lot_changed` з тригера на `lots` (відправляється на commit, також зі змін worker); кожна репліка емітить лише своїм клієнтам (`io.local`). Redis-адаптер лише для міжрепліковых операцій (`disconnectUser`); втрата Redis оновлень не губить. Клієнт застосовує оновлення, якщо `seq` не менший за відомий; при перепідключенні — `lot:subscribe {lastSeq}` повертає пропущені ставки (≤100) |
 | D24 | Nest-шар | Контролери тонкі: вхід валідують сервіси (Zod із shared), відповіді описані Zod-схемами в `http/schemas.ts` → OpenAPI (`zod-to-json-schema`, без nestjs-zod: конфлікт peer-версій). Guard глобальний і «закритий за замовчуванням»: відкриті лише `@Public()`; ролі — `@Roles()`. Усі помилки (AppError, HttpException, помилки body-parser) → `{code,message,details}`; невідоме → 500 `INTERNAL_ERROR` без деталей. Не-UUID у шляху → 400 |
 | D25 | Worker | Звичайний Node-процес (без Nest і BullMQ): цикли-свіпери по БД (пошук 1 с, закриття 1 с, неоплата, автопідтвердження доставки 7 дн., оренди модерації, фото, листи, нагадування, звірка платежів) із compare-and-set/SKIP LOCKED у сервісах; кілька worker безпечні, втрата Redis нічого не змінює (D14). Листи відправляються через SMTP у Mailpit (`SmtpEmailSender`). Сесії платіжної заглушки зберігаються в Postgres (`payment_stub_sessions`), тому доступні на обох репліках `api` та у `worker` |
+| D26 | Сид | Історичні дані сиду (завершені/неоплачені продажі, ставки) — лише дані без проводок ledger, тому звірка залишається нульовою; ledger-підкріплені лише гаманці демо-покупців `buyer1..buyer10@auction.test` (50 000 ₴). Логіни: `buyer<N>@auction.test` (N ≤ 7996), `seller<N>` (≤ 2000), `moderator1..3`, `finance1`; пароль `password123`. Фото-заглушки (згенеровані sharp, 12 варіантів) — по одному на активні й `in_review` лоти (5 100 об'єктів у MinIO). Тести int запускаються на БД з `TEST_DATABASE_URL` (за відсутності — на dev-БД `auction`, яку вони перестворюють) |
 | D19 | Стан платежу | `succeeded` термінальний і виграє в `failed`/`expired`; кредит рівно раз (блок рядка + `effectKey topup:<id>` + дедуп за `provider_event_id`); `failed`/`expired` лише з `pending`; `created_at` платежу з `Clock`. Сесії заглушки in-memory (одна інстанція) |
 
 ## Журнал комітів
@@ -117,3 +118,5 @@
 | (крок 0) | `feat(api): connect smtp mail stub, share payment stub sessions in db, fix ci services` |
 | (етап 14б) | `feat(sales): win payment with deposit credit, shipping, receipt confirmation, payout, favorites, references` |
 | (етап 16) | `feat(reports): period report with category breakdown and ledger/stub reconciliation` |
+| (етап 17) | `feat(seed): idempotent set-based seed of 10k users, 50k lots, 500k bids, placeholder photos` |
+

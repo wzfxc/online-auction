@@ -21,6 +21,7 @@ const envSchema = z.object({
   PAYMENT_STUB_MODE: z.enum(['none', 'chaos']).default('none'),
   PAYMENT_STUB_BASE_URL: z.string().url(),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
+  SEED_ON_START: z.enum(['true', 'false']).default('false'),
   INSTANCE_ID: z.string().default('api'),
   TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).default(DEFAULT_TOKEN_TTL_SECONDS),
 });
