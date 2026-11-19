@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull } from 'drizzle-orm';
 import type { Clock } from '../common/clock/clock.js';
 import type { Db } from '../db/client.js';
 import { paymentStubSessions } from '../db/schema.js';
@@ -7,6 +7,7 @@ import { signWebhook } from './signature.js';
 export type ProviderStatus = 'pending' | 'succeeded' | 'failed' | 'expired';
 export type StubMode = 'none' | 'chaos';
 export type PayerAction = 'success' | 'fail' | 'close';
+export type ResolveOutcome = 'resolved' | 'already_resolved' | 'expired' | 'not_found';
 
 export interface WebhookEvent {
   providerEventId: string;
@@ -86,11 +87,10 @@ export class StubPaymentProvider implements PaymentProvider {
     return { paymentId, amount: s.amount, status: this.computeStatus(s) };
   }
 
-  /** The payer's button press. "close" sends nothing and leaves the session pending. */
-  resolve(paymentId: string, action: PayerAction): void | Promise<void> {
+  /** The payer's button press. "close" sends nothing and leaves the session pending; expired sessions cannot be resolved. */
+  resolve(paymentId: string, action: PayerAction): ResolveOutcome | Promise<ResolveOutcome> {
     if (!this.deps.db) {
-      this.resolveInMemory(paymentId, action);
-      return;
+      return this.resolveInMemory(paymentId, action);
     }
     return this.resolveInDb(paymentId, action);
   }
@@ -125,30 +125,47 @@ export class StubPaymentProvider implements PaymentProvider {
     return this.sessions.get(paymentId) ?? null;
   }
 
-  private resolveInMemory(paymentId: string, action: PayerAction): void {
+  private resolveInMemory(paymentId: string, action: PayerAction): ResolveOutcome {
     const s = this.sessions.get(paymentId);
-    if (!s || s.outcome || action === 'close') return;
+    if (!s) return 'not_found';
+    if (s.outcome) return 'already_resolved';
+    if (this.computeStatus(s) === 'expired') return 'expired';
+    if (action === 'close') return 'resolved';
     s.outcome = action === 'success' ? 'succeeded' : 'failed';
     const type = s.outcome === 'succeeded' ? 'payment.succeeded' : 'payment.failed';
     this.emit(paymentId, [type]);
+    return 'resolved';
   }
 
-  private async resolveInDb(paymentId: string, action: PayerAction): Promise<void> {
-    if (action === 'close') return;
+  private async resolveInDb(paymentId: string, action: PayerAction): Promise<ResolveOutcome> {
+    const existing = await this.loadSession(paymentId);
+    if (!existing) return 'not_found';
+    if (existing.outcome) return 'already_resolved';
+    if (this.computeStatus(existing) === 'expired') return 'expired';
+    if (action === 'close') return 'resolved';
+
     const outcome: 'succeeded' | 'failed' = action === 'success' ? 'succeeded' : 'failed';
+    const cutoff = new Date(this.deps.clock.now().getTime() - SESSION_TTL_MS);
     const updated = await this.deps.db!
       .update(paymentStubSessions)
       .set({ outcome })
-      .where(and(eq(paymentStubSessions.paymentId, paymentId), isNull(paymentStubSessions.outcome)))
+      .where(and(
+        eq(paymentStubSessions.paymentId, paymentId),
+        isNull(paymentStubSessions.outcome),
+        gt(paymentStubSessions.createdAt, cutoff),
+      ))
       .returning({ paymentId: paymentStubSessions.paymentId });
     if (updated.length === 0) {
-      this.resolveInMemory(paymentId, action);
-      return;
+      const refreshed = await this.loadSession(paymentId);
+      if (!refreshed) return 'not_found';
+      if (refreshed.outcome) return 'already_resolved';
+      return 'expired';
     }
     const cached = this.sessions.get(paymentId);
     if (cached) cached.outcome = outcome;
     const type = outcome === 'succeeded' ? 'payment.succeeded' : 'payment.failed';
     this.emit(paymentId, [type]);
+    return 'resolved';
   }
 
   private event(paymentId: string, type: WebhookEvent['type']): DeliveredWebhook {

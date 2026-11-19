@@ -193,4 +193,30 @@ describe('unpaid sales → second chance', () => {
     const all = await salesOf(lotId);
     expect(all[1]!.buyerId).toBe(ok.id);
   });
+
+  it('on equal maxAmount in second chance, picks the bidder who reached that max earlier (not earlier lower bid)', async () => {
+    const lotId = await newLot();
+    const a = await newUser('buyer', 1_000_000);
+    const b = await newUser('buyer', 1_000_000);
+    const winner = await newUser('buyer', 1_000_000);
+    clock.set('2030-01-01T09:00:00.000Z');
+    // A places an early lower max (15_000) at seq 1:
+    await bidsSvc.placeBid(a, lotId, { amount: 10_000, maxAmount: 15_000 }, key());
+    // B reaches 25_000 FIRST at seq 2:
+    await bidsSvc.placeBid(b, lotId, { amount: 11_000, maxAmount: 25_000 }, key());
+    // A later raises to 25_000 at seq 3 (ties B's max later):
+    await bidsSvc.placeBid(a, lotId, { amount: 25_000, maxAmount: 25_000 }, key());
+    // C wins at 50_000 and defaults:
+    await bidsSvc.placeBid(winner, lotId, { amount: 26_000, maxAmount: 50_000 }, key());
+
+    clock.set('2030-01-01T12:00:01.000Z');
+    await closing.closeLot(lotId);
+    const [first] = await salesOf(lotId);
+    expect(first!.buyerId).toBe(winner.id);
+
+    clock.set('2030-01-03T12:00:02.000Z');
+    expect(await closing.defaultSale(first!.id)).toBe('offered_next');
+    const all = await salesOf(lotId);
+    expect(all[1]!.buyerId).toBe(b.id);
+  });
 });

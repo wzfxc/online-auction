@@ -1,4 +1,5 @@
 import type { Meilisearch } from 'meilisearch';
+import { MAX_KOPECKS } from '@auction/shared';
 import { z } from 'zod';
 import { AppError, Errors } from '../common/errors/app-error.js';
 import type { LotSearchDoc } from './document.js';
@@ -10,8 +11,8 @@ export const searchQuerySchema = z.object({
   cityId: z.string().uuid().optional(),
   condition: z.enum(['new', 'like_new', 'good', 'fair', 'poor']).optional(),
   status: z.enum(['active', 'ended_unsold', 'awaiting_payment', 'paid', 'shipped', 'completed']).default('active'),
-  minPrice: z.coerce.number().int().min(0).optional(),
-  maxPrice: z.coerce.number().int().min(0).optional(),
+  minPrice: z.coerce.number().int().min(0).max(MAX_KOPECKS).optional(),
+  maxPrice: z.coerce.number().int().min(0).max(MAX_KOPECKS).optional(),
   noBids: z.enum(['true', 'false']).optional(),
   endingWithinMinutes: z.coerce.number().int().min(1).max(14 * 24 * 60).optional(),
   sort: z.enum(['relevance', 'price_asc', 'price_desc', 'ending_soon', 'newest']).default('relevance'),
@@ -39,6 +40,9 @@ export class SearchService {
     const parsed = searchQuerySchema.safeParse(raw);
     if (!parsed.success) throw Errors.validation(parsed.error.issues);
     const p = parsed.data;
+    if (p.minPrice !== undefined && p.maxPrice !== undefined && p.minPrice > p.maxPrice) {
+      throw Errors.validation([{ path: ['minPrice'], message: 'minPrice must not exceed maxPrice' }]);
+    }
     const filter: string[] = [`status = ${p.status}`];
     if (p.categoryId) filter.push(`categoryId = "${p.categoryId}"`);
     if (p.cityId) filter.push(`cityId = "${p.cityId}"`);

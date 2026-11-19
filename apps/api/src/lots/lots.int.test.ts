@@ -82,14 +82,28 @@ describe('editing rules', () => {
     await expect(svc.update(seller, lot.id, { startPrice: 95_000 })).rejects.toMatchObject({ status: 400 });
   });
 
-  it('published lot only accepts appended description', async () => {
+  it('active lot with 0 bids can edit fields; once a bid exists, only description can be appended', async () => {
     const lot = await svc.create(seller, input());
     await svc.submit(seller, lot.id);
     await svc.approve(moderator, lot.id);
+
+    const editedActive = await svc.update(seller, lot.id, { title: 'Updated Before First Bid', startPrice: 20_000 });
+    expect(editedActive.title).toBe('Updated Before First Bid');
+    expect(editedActive.currentPrice).toBe(20_000);
+
+    // Simulate first bid placed:
+    await db.update(lots).set({ bidCount: 1, currentPrice: 20_000 }).where(sql`id = ${lot.id}`);
     await expect(svc.update(seller, lot.id, { title: 'Hacked' })).rejects.toMatchObject({ status: 422, code: 'LOT_PUBLISHED' });
     const after = await svc.update(seller, lot.id, { append: 'Extra info' });
     expect(after.description).toBe('Works well\n\nExtra info');
-    expect(after.title).toBe('Vintage camera');
+    expect(after.title).toBe('Updated Before First Bid');
+  });
+
+  it('rejects unknown categoryId or cityId with 400 validation error instead of 500', async () => {
+    await expect(svc.create(seller, { ...input(), categoryId: '00000000-0000-4000-8000-000000000000' }))
+      .rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+    await expect(svc.create(seller, { ...input(), cityId: '00000000-0000-4000-8000-000000000000' }))
+      .rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
   });
 });
 

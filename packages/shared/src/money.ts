@@ -1,6 +1,9 @@
 /** Money is UAH in kopecks, always integers. */
 export type Kopecks = number;
 
+/** Safe ceiling (10 billion UAH in kopecks) preventing Postgres/Meilisearch/step overflow. */
+export const MAX_KOPECKS = 1_000_000_000_000;
+
 export const MIN_FEE_KOPECKS = 1000;
 export const FEE_PERCENT = 5;
 export const DEPOSIT_PERCENT = 10;

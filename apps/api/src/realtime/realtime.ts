@@ -15,7 +15,10 @@ export const MAX_MISSED_BIDS = 100;
 const CHANNEL = 'lot_changed';
 const RECONNECT_MS = 500;
 
-const subscribeSchema = z.object({ lotId: z.string().uuid(), lastSeq: z.number().int().min(0).optional() }).strict();
+const subscribeSchema = z.object({
+  lotId: z.string().uuid(),
+  lastSeq: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+}).strict();
 const notificationSchema = z.object({ lotId: z.string().uuid(), outbidUserId: z.string().uuid().nullable() });
 
 export type SubscribeAck =

@@ -179,10 +179,12 @@ describe('live updates across two api replicas', () => {
   });
 
   it('refuses invalid tokens, invalid payloads and non-public lots', async () => {
+    const lotId = await newLot();
     const draft = await newLot({ status: 'draft', endsAt: null });
     const anon = await client(a.url);
     expect(await subscribe(anon, draft)).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } });
     expect(await subscribe(anon, 'not-a-uuid')).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } });
+    expect(await subscribe(anon, lotId, 1e20)).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } });
     await expect(client(a.url, { id: 'nope', role: 'buyer' })).rejects.toThrow('UNAUTHORIZED');
   });
 

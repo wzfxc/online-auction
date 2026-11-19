@@ -161,4 +161,22 @@ describe('top-up payments', () => {
     await workerPayments.reconcile();
     expect(await available(u)).toBe(75_000);
   });
+
+  it('refuses resolving an expired stub session in Postgres', async () => {
+    const clock = new FakeClock();
+    const inbox: DeliveredWebhook[] = [];
+    const provider = new StubPaymentProvider({
+      clock, secret: SECRET, mode: 'none', baseUrl: 'http://stub', db, random: () => 0,
+      deliver: async (h) => { inbox.push(h); },
+      schedule: (task) => { void task(); },
+    });
+    const service = new PaymentService(db, clock, provider, SECRET);
+    const u = await newUser();
+    const { body } = await service.createTopUp(u, 25_000, 'expired-db-1');
+    clock.advance(31 * 60_000);
+    expect(await provider.getStatus(body.paymentId)).toBe('expired');
+    expect(await provider.resolve(body.paymentId, 'success')).toBe('expired');
+    expect(inbox).toHaveLength(0);
+    expect(await available(u)).toBe(0);
+  });
 });

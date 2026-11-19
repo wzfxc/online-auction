@@ -151,17 +151,20 @@ export class ClosingService {
   }
 
   /**
-   * Next bidder to offer the lot to: highest maximum first (earlier wins ties), skipping anyone who already
-   * had an attempt. A bidder who cannot fund the 10% deposit for the offer is skipped too.
+   * Next bidder to offer the lot to: highest maximum first (tie-break by earliest bid reaching that max),
+   * skipping anyone who already had an attempt. A bidder who cannot fund the 10% deposit is skipped too.
    */
   private async nextOffer(tx: Tx, lot: LotRow): Promise<SecondChanceCandidate | null> {
     const rows = await tx.execute(sql`
-      select b.user_id, max(b.max_amount) as max_amount, min(b.seq) as reached_seq
+      select distinct on (b.user_id)
+        b.user_id,
+        b.max_amount,
+        b.seq as reached_seq
       from bids b
       where b.lot_id = ${lot.id}
         and b.user_id not in (select buyer_id from sales where lot_id = ${lot.id})
         and b.user_id <> ${lot.sellerId}
-      group by b.user_id`);
+      order by b.user_id, b.max_amount desc, b.seq asc`);
     const list = rows.rows.map((r) => {
       const x = r as { user_id: string; max_amount: string | number; reached_seq: string | number };
       return { userId: x.user_id, maxAmount: Number(x.max_amount), reachedSeq: Number(x.reached_seq) };

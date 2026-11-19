@@ -90,4 +90,15 @@ describe('stub provider', () => {
     await Promise.resolve();
     expect(sent).toHaveLength(1);
   });
+
+  it('refuses resolving an expired session (> 30 min)', async () => {
+    const { provider, sent, clock } = capture('none', []);
+    provider.createSession('p-exp', 1000);
+    clock.advance(SESSION_TTL_MS + 1);
+    expect(provider.getStatus('p-exp')).toBe('expired');
+    expect(provider.resolve('p-exp', 'success')).toBe('expired');
+    await Promise.resolve();
+    expect(sent).toHaveLength(0);
+    expect(provider.getStatus('p-exp')).toBe('expired');
+  });
 });

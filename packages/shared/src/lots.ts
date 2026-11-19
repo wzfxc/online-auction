@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_KOPECKS } from './money.js';
 
 export const LOT_STATUSES = [
   'draft', 'in_review', 'rejected', 'active', 'ended_unsold', 'awaiting_payment',
@@ -48,7 +49,7 @@ export const PHOTO_VIEW_TTL_SECONDS = 300;
 export const MIN_DURATION_DAYS = 1;
 export const MAX_DURATION_DAYS = 10;
 
-const kopecks = z.number().int().safe().positive();
+const kopecks = z.number().int().safe().positive().max(MAX_KOPECKS);
 
 export const lotFieldsSchema = z.object({
   title: z.string().trim().min(3).max(120),

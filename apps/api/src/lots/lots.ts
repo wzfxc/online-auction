@@ -108,6 +108,7 @@ export class LotService {
     const v = parsed.data;
     const now = this.clock.now();
     return this.db.transaction(async (tx) => {
+      await this.assertRefsExist(tx, v.categoryId, v.cityId);
       const [row] = await tx.insert(lots).values({
         sellerId: user.id, title: v.title, description: v.description, categoryId: v.categoryId,
         cityId: v.cityId, condition: v.condition, startPrice: v.startPrice,
@@ -119,19 +120,35 @@ export class LotService {
     });
   }
 
-  /** Before the first bid anything may change; once published only appending to the description. */
+  /** Before the first bid anything may change (even when active); once bid on, only appending to the description. */
   async update(user: Principal, lotId: string, raw: unknown): Promise<OwnLotDto> {
     return this.db.transaction(async (tx) => {
       const lot = await this.lockOwn(tx, user, lotId);
-      if (lot.status === 'active') return this.appendDescription(tx, user, lot, raw);
-      if (lot.status !== 'draft') throw Errors.conflict('LOT_NOT_EDITABLE', 'Lot cannot be edited in this status');
+      if (lot.status === 'active' && lot.bidCount > 0) return this.appendDescription(tx, user, lot, raw);
+      if (lot.status === 'active' && raw && typeof raw === 'object' && 'append' in raw && Object.keys(raw).length === 1) {
+        return this.appendDescription(tx, user, lot, raw);
+      }
+      if (lot.status !== 'draft' && !(lot.status === 'active' && lot.bidCount === 0)) {
+        throw Errors.conflict('LOT_NOT_EDITABLE', 'Lot cannot be edited in this status');
+      }
 
       const p = updateLotSchema.safeParse(raw);
       if (!p.success) throw Errors.validation(p.error.issues);
       const merged = createLotSchema.safeParse({ ...lot, ...p.data });
       if (!merged.success) throw Errors.validation(merged.error.issues);
-      const patch = { ...p.data, ...(p.data.startPrice !== undefined ? { currentPrice: p.data.startPrice } : {}) };
-      const [row] = await tx.update(lots).set({ ...patch, updatedAt: this.clock.now() }).where(eq(lots.id, lotId)).returning();
+      await this.assertRefsExist(tx, merged.data.categoryId, merged.data.cityId);
+
+      const now = this.clock.now();
+      const endsAtPatch =
+        lot.status === 'active' && p.data.durationDays !== undefined && lot.endsAt
+          ? { endsAt: new Date(Math.max(now.getTime(), lot.endsAt.getTime() + (p.data.durationDays - lot.durationDays) * DAY_MS)) }
+          : {};
+      const patch = {
+        ...p.data,
+        ...(p.data.startPrice !== undefined ? { currentPrice: p.data.startPrice } : {}),
+        ...endsAtPatch,
+      };
+      const [row] = await tx.update(lots).set({ ...patch, updatedAt: now }).where(eq(lots.id, lotId)).returning();
       await this.log(tx, lotId, user.id, 'updated', { fields: Object.keys(p.data) });
       return toOwnLotDto(row!);
     });
@@ -324,6 +341,13 @@ export class LotService {
     if (!canTransition(from, to, actor)) {
       throw Errors.conflict('INVALID_LOT_TRANSITION', `Cannot move lot from ${from} to ${to}`, { from, to });
     }
+  }
+
+  private async assertRefsExist(tx: Tx, categoryId: string, cityId: string): Promise<void> {
+    const [cat] = await tx.select({ id: categories.id }).from(categories).where(eq(categories.id, categoryId));
+    if (!cat) throw Errors.validation([{ path: ['categoryId'], message: 'Unknown category' }]);
+    const [city] = await tx.select({ id: cities.id }).from(cities).where(eq(cities.id, cityId));
+    if (!city) throw Errors.validation([{ path: ['cityId'], message: 'Unknown city' }]);
   }
 
   private async log(tx: Tx, lotId: string, actorId: string, type: string, payload: object): Promise<void> {

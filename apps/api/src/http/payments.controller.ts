@@ -9,6 +9,7 @@ import { SIGNATURE_HEADER } from '../payments-stub/signature.js';
 import { Public } from './auth.js';
 import { ApiErrors, ZBody, ZResponse, ZUuidParam } from './openapi-helpers.js';
 import { UuidPipe } from './pipes.js';
+import { SkipThrottle } from './rate-limit.js';
 import { payerActionSchema, stubSessionSchema, webhookAckSchema } from './schemas.js';
 
 @ApiTags('payments')
@@ -21,6 +22,7 @@ export class PaymentsController {
 
   /** Authenticated by the HMAC over the exact request bytes, not by a user token. */
   @Public()
+  @SkipThrottle()
   @Post('payments/webhook')
   @HttpCode(200)
   @ApiOperation({ operationId: 'paymentWebhook', summary: 'Payment provider webhook (signed)' })
@@ -80,9 +82,9 @@ export class PaymentsController {
   <p class="amount" data-testid="payment-amount">${uah} ₴</p>
   <p>Статус: <strong id="status" data-testid="payment-status">${s.status}</strong></p>
   <div class="actions">
-    <button type="button" class="success" data-testid="pay-success" onclick="act('success')">Успех / Успіх / Success</button>
-    <button type="button" class="fail" data-testid="pay-fail" onclick="act('fail')">Отказ / Відмова / Fail</button>
-    <button type="button" class="close" data-testid="pay-close" onclick="act('close')">Закрыть без ответа / Закрити без відповіді</button>
+    <button type="button" class="success" data-testid="pay-success" ${s.status !== 'pending' ? 'disabled' : ''} onclick="act('success')">Успех / Успіх / Success</button>
+    <button type="button" class="fail" data-testid="pay-fail" ${s.status !== 'pending' ? 'disabled' : ''} onclick="act('fail')">Отказ / Відмова / Fail</button>
+    <button type="button" class="close" data-testid="pay-close" ${s.status !== 'pending' ? 'disabled' : ''} onclick="act('close')">Закрыть без ответа / Закрити без відповіді</button>
   </div>
   <p id="result" role="status" aria-live="polite"></p>
   <script>
@@ -116,10 +118,12 @@ export class PaymentsController {
   @ApiOperation({ operationId: 'stubPay', summary: 'Payment stub: the payer picks an outcome' })
   @ZUuidParam('paymentId')
   @ZBody(payerActionSchema)
-  @ApiErrors(400)
+  @ApiErrors(400, 404, 409)
   async pay(@Param('paymentId', UuidPipe) paymentId: string, @Body() raw: unknown): Promise<void> {
     const p = payerActionSchema.safeParse(raw);
     if (!p.success) throw Errors.validation(p.error.issues);
-    await this.stub.resolve(paymentId, p.data.action);
+    const outcome = await this.stub.resolve(paymentId, p.data.action);
+    if (outcome === 'not_found') throw Errors.notFound('Payment session');
+    if (outcome === 'expired') throw Errors.conflict('PAYMENT_SESSION_EXPIRED', 'Payment session has expired');
   }
 }

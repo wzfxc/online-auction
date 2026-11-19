@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { bidStep, type Kopecks } from './money.js';
+import { bidStep, MAX_KOPECKS, type Kopecks } from './money.js';
 
 /** Payment window for a won lot (hours); used by buy-now and by closing. */
 export const PAYMENT_WINDOW_HOURS = 48;
@@ -10,8 +10,8 @@ export const PAYMENT_WINDOW_HOURS = 48;
  */
 export const placeBidSchema = z
   .object({
-    amount: z.number().int().positive().safe(),
-    maxAmount: z.number().int().positive().safe().optional(),
+    amount: z.number().int().positive().safe().max(MAX_KOPECKS),
+    maxAmount: z.number().int().positive().safe().max(MAX_KOPECKS).optional(),
   })
   .refine((v) => v.maxAmount === undefined || v.maxAmount >= v.amount, {
     message: 'maxAmount must be >= amount',

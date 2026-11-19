@@ -277,3 +277,50 @@ describe('remaining endpoints', () => {
     expect(walletHistory.body.pendingPayout).toBe(0);
   });
 });
+
+describe('audit hardening (logout, DB error mapping, bounds, expired stub)', () => {
+  it('POST /auth/logout revokes the token immediately on protected endpoints', async () => {
+    const u = await register('buyer', 'logout-test@t.test');
+    expect((await http().get('/auth/me').set(bearer(u.token))).status).toBe(200);
+    const out = await http().post('/auth/logout').set(bearer(u.token));
+    expect(out.status).toBe(204);
+    const after = await http().get('/auth/me').set(bearer(u.token));
+    expect(after.status).toBe(401);
+    expect(after.body.code).toBe('UNAUTHORIZED');
+  });
+
+  it('rejects null bytes, unknown FK UUIDs and oversized search minPrice with 400 VALIDATION_ERROR instead of 500/503', async () => {
+    const s = await register('seller', 'hostile-http@t.test');
+    const nulReg = await http().post('/auth/register').send({
+      email: 'nulreg@t.test', password: 'password123', displayName: 'Bad\u0000Name', role: 'buyer',
+    });
+    expect(nulReg.status).toBe(400);
+    expect(nulReg.body.code).toBe('VALIDATION_ERROR');
+
+    const nulLot = await http().post('/lots').set(bearer(s.token)).send({
+      ...lotBody(), title: 'Null\u0000Title',
+    });
+    expect(nulLot.status).toBe(400);
+    expect(nulLot.body.code).toBe('VALIDATION_ERROR');
+
+    const badFk = await http().post('/lots').set(bearer(s.token)).send({
+      ...lotBody(), categoryId: '00000000-0000-4000-8000-000000000000',
+    });
+    expect(badFk.status).toBe(400);
+    expect(badFk.body.code).toBe('VALIDATION_ERROR');
+
+    const badSearch = await http().get('/search').query({ minPrice: '10000000000000000000000000' });
+    expect(badSearch.status).toBe(400);
+    expect(badSearch.body.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 409 PAYMENT_SESSION_EXPIRED when resolving an expired stub session via HTTP', async () => {
+    const b = await register('buyer', 'exp-stub-http@t.test');
+    const topup = await http().post('/wallet/top-ups').set(bearer(b.token)).set('Idempotency-Key', 'exp-stub-1').send({ amount: 10_000 });
+    expect(topup.status).toBe(201);
+    clock.advance(31 * 60_000);
+    const payRes = await http().post(`/payments-stub/pay/${topup.body.paymentId}`).send({ action: 'success' });
+    expect(payRes.status).toBe(409);
+    expect(payRes.body.code).toBe('PAYMENT_SESSION_EXPIRED');
+  });
+});
