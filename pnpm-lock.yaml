@@ -41,6 +41,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(@types/pg@8.23.1)(pg@8.23.1)
+      meilisearch:
+        specifier: ^0.63.0
+        version: 0.63.0
       pg:
         specifier: ^8.23.1
         version: 8.23.1
@@ -1614,6 +1617,10 @@ packages:
 
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
+
+  meilisearch@0.63.0:
+    resolution: {integrity: sha512-gpVdo4dpoma7MMVN4vbfZrWZWp1vIyKWRDKNJsHvB+z6+ykc3E210yb2lvbsTrRTNSM1hfq3vmXu4DRO00IDkA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
 
   minimatch@11.0.9:
     resolution: {integrity: sha512-KCFkfyjqerNlSstjlhIGNXIKZGA/6O4V4RlhZ+Dsr621SPPw0mzlypE9D9ZOoPiVefHID+j7/XuMMlqfD/F60Q==}
@@ -3242,6 +3249,8 @@ snapshots:
   magic-string@0.30.21:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
+
+  meilisearch@0.63.0: {}
 
   minimatch@11.0.9:
     dependencies:
