@@ -9,7 +9,7 @@
 | 3 | Схема БД, міграції | ✅ |
 | 4 | Гроші/проводки/wallet/Clock/помилки/auth/idempotency | ✅ (чисті сервіси; Nest-обв'язка, guards і фільтр — з першими контролерами, етап 6) |
 | 5 | Платіжна заглушка | ✅ (чиста логіка + провайдер-заглушка; HTTP-маршрути вебхука/сторінки оплати й таймер reconciler — з Nest-обв'язкою, етап 6/8) |
-| 6 | Лоти | ⬜ |
+| 6 | Лоти | ✅ (доменний сервіс: створення, правила редагування, переходи, історія, DTO без резерву; Nest-контролери/guards — окремим кроком перед етапом 14, коли знадобиться OpenAPI) |
 | 7 | Ставки, автоставки | ⬜ |
 | 8 | Антиснайпінг, закриття, черги, другий шанс | ⬜ |
 | 9 | Модерація | ⬜ |
@@ -97,3 +97,4 @@
 | (етап 3) | `feat(db): drizzle schema, migrations, ledger triggers` |
 | (етап 4) | `feat(core): clock, errors, ledger, wallet, idempotency, auth primitives` |
 | (етап 5) | `feat(payments): stub provider, HMAC webhooks, chaos modes, reconciler` |
+| (етап 6) | `feat(lots): status transition table, lot service, history, reserve-safe DTOs` |
