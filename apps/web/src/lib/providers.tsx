@@ -107,12 +107,15 @@ function AuthAndSocketProvider({ apiUrl, children }: { apiUrl: string; children:
   }, [qc]);
 
   const logout = useCallback(() => {
+    if (token) {
+      void makeClient(apiUrl, token).POST('/auth/logout').catch(() => undefined);
+    }
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
     setToken(null);
     setUser(null);
     setOutbidToast(null);
     void qc.clear();
-  }, [qc]);
+  }, [apiUrl, token, qc]);
 
   useEffect(() => {
     const s = io(apiUrl, {

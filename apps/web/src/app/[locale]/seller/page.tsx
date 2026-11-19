@@ -132,7 +132,7 @@ export default function SellerDashboardPage() {
       buyNowPrice: number | null;
       durationDays: number;
     }) => {
-      if (selectedLot && selectedLot.status === 'draft') {
+      if (selectedLot && (selectedLot.status === 'draft' || (selectedLot.status === 'active' && selectedLot.bidCount === 0))) {
         return unwrap(
           await client.PATCH('/lots/{id}', {
             params: { path: { id: selectedLot.id } },
@@ -218,22 +218,22 @@ export default function SellerDashboardPage() {
     form.clearErrors();
     const startKop = uahToKopecks(values.startPriceUah);
     if (!startKop) {
-      form.setError('startPriceUah', { message: t('startPriceLabel') });
+      form.setError('startPriceUah', { message: t('validationStartPrice') });
       return;
     }
     const reserveKop = values.reservePriceUah.trim() ? uahToKopecks(values.reservePriceUah) : null;
     if (values.reservePriceUah.trim() && (!reserveKop || reserveKop < startKop)) {
-      form.setError('reservePriceUah', { message: t('reservePriceLabel') });
+      form.setError('reservePriceUah', { message: t('validationReservePrice') });
       return;
     }
     const buyNowKop = values.buyNowPriceUah.trim() ? uahToKopecks(values.buyNowPriceUah) : null;
     if (values.buyNowPriceUah.trim() && (!buyNowKop || buyNowKop < startKop)) {
-      form.setError('buyNowPriceUah', { message: t('buyNowPriceLabel') });
+      form.setError('buyNowPriceUah', { message: t('validationBuyNowPrice') });
       return;
     }
     const duration = Number.parseInt(values.durationDays, 10);
     if (!Number.isFinite(duration) || duration < 1 || duration > 10) {
-      form.setError('durationDays', { message: t('durationLabel') });
+      form.setError('durationDays', { message: t('validationDuration') });
       return;
     }
     await saveMutation.mutateAsync({
@@ -255,7 +255,7 @@ export default function SellerDashboardPage() {
     try {
       const contentType = file.type as (typeof PHOTO_CONTENT_TYPES)[number];
       if (!PHOTO_CONTENT_TYPES.includes(contentType)) {
-        throw new Error('JPEG / PNG / WebP only');
+        throw new Error(t('photoInvalidType'));
       }
       const presigned = unwrap(
         await client.POST('/lots/{id}/photos', {
@@ -267,7 +267,7 @@ export default function SellerDashboardPage() {
       for (const [k, v] of Object.entries(presigned.upload.fields)) fd.append(k, v);
       fd.append('file', file);
       const s3Res = await fetch(presigned.upload.url, { method: 'POST', body: fd });
-      if (!s3Res.ok) throw new Error(`Upload failed (${s3Res.status})`);
+      if (!s3Res.ok) throw new Error(t('photoUploadFailed', { status: s3Res.status }));
       unwrap(
         await client.POST('/lots/{id}/photos/{photoId}/confirm', {
           params: { path: { id: selectedLot.id, photoId: presigned.photoId } },
@@ -280,6 +280,10 @@ export default function SellerDashboardPage() {
   };
 
   const mine = myLotsQuery.data;
+  const canFullEdit = Boolean(
+    selectedLot && (selectedLot.status === 'draft' || (selectedLot.status === 'active' && selectedLot.bidCount === 0)),
+  );
+  const errs = form.formState.errors;
 
   return (
     <div className="space-y-8">
@@ -316,7 +320,7 @@ export default function SellerDashboardPage() {
         <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900">
-              {selectedLot?.status === 'draft' ? t('editLotTitle') : t('createLotTitle')}
+              {canFullEdit ? t('editLotTitle') : t('createLotTitle')}
             </h2>
             {selectedLot && (
               <button
@@ -338,9 +342,19 @@ export default function SellerDashboardPage() {
                 id="lot-title"
                 data-testid="lot-title-input"
                 type="text"
-                {...form.register('title', { required: true, minLength: 3 })}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                aria-invalid={Boolean(errs.title)}
+                aria-describedby={errs.title ? 'lot-title-err' : undefined}
+                {...form.register('title', {
+                  required: t('validationTitleRequired'),
+                  validate: (v) => v.trim().length >= 3 || t('validationTitleRequired'),
+                })}
+                className={`w-full rounded-lg border px-3 py-2 text-sm ${errs.title ? 'border-rose-500' : 'border-slate-300'}`}
               />
+              {errs.title?.message && (
+                <p id="lot-title-err" role="alert" className="mt-1 text-xs text-rose-600">
+                  {errs.title.message}
+                </p>
+              )}
             </div>
 
             <div>
@@ -351,9 +365,19 @@ export default function SellerDashboardPage() {
                 id="lot-desc"
                 data-testid="lot-desc-input"
                 rows={3}
-                {...form.register('description', { required: true })}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                aria-invalid={Boolean(errs.description)}
+                aria-describedby={errs.description ? 'lot-desc-err' : undefined}
+                {...form.register('description', {
+                  required: t('validationDescRequired'),
+                  validate: (v) => v.trim().length >= 1 || t('validationDescRequired'),
+                })}
+                className={`w-full rounded-lg border px-3 py-2 text-sm ${errs.description ? 'border-rose-500' : 'border-slate-300'}`}
               />
+              {errs.description?.message && (
+                <p id="lot-desc-err" role="alert" className="mt-1 text-xs text-rose-600">
+                  {errs.description.message}
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -405,10 +429,16 @@ export default function SellerDashboardPage() {
                   data-testid="lot-start-price"
                   type="text"
                   inputMode="decimal"
-                  aria-invalid={Boolean(form.formState.errors.startPriceUah)}
+                  aria-invalid={Boolean(errs.startPriceUah)}
+                  aria-describedby={errs.startPriceUah ? 'lot-start-err' : undefined}
                   {...form.register('startPriceUah')}
-                  className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm"
+                  className={`w-full rounded-lg border px-2.5 py-2 text-sm ${errs.startPriceUah ? 'border-rose-500' : 'border-slate-300'}`}
                 />
+                {errs.startPriceUah?.message && (
+                  <p id="lot-start-err" role="alert" className="mt-1 text-xs text-rose-600">
+                    {errs.startPriceUah.message}
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="lot-reserve" className="mb-1 block text-xs font-medium text-slate-700">
@@ -419,10 +449,16 @@ export default function SellerDashboardPage() {
                   data-testid="lot-reserve-price"
                   type="text"
                   inputMode="decimal"
-                  aria-invalid={Boolean(form.formState.errors.reservePriceUah)}
+                  aria-invalid={Boolean(errs.reservePriceUah)}
+                  aria-describedby={errs.reservePriceUah ? 'lot-reserve-err' : undefined}
                   {...form.register('reservePriceUah')}
-                  className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm"
+                  className={`w-full rounded-lg border px-2.5 py-2 text-sm ${errs.reservePriceUah ? 'border-rose-500' : 'border-slate-300'}`}
                 />
+                {errs.reservePriceUah?.message && (
+                  <p id="lot-reserve-err" role="alert" className="mt-1 text-xs text-rose-600">
+                    {errs.reservePriceUah.message}
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="lot-buynow" className="mb-1 block text-xs font-medium text-slate-700">
@@ -433,10 +469,16 @@ export default function SellerDashboardPage() {
                   data-testid="lot-buynow-price"
                   type="text"
                   inputMode="decimal"
-                  aria-invalid={Boolean(form.formState.errors.buyNowPriceUah)}
+                  aria-invalid={Boolean(errs.buyNowPriceUah)}
+                  aria-describedby={errs.buyNowPriceUah ? 'lot-buynow-err' : undefined}
                   {...form.register('buyNowPriceUah')}
-                  className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm"
+                  className={`w-full rounded-lg border px-2.5 py-2 text-sm ${errs.buyNowPriceUah ? 'border-rose-500' : 'border-slate-300'}`}
                 />
+                {errs.buyNowPriceUah?.message && (
+                  <p id="lot-buynow-err" role="alert" className="mt-1 text-xs text-rose-600">
+                    {errs.buyNowPriceUah.message}
+                  </p>
+                )}
               </div>
               <div>
                 <label htmlFor="lot-duration" className="mb-1 block text-xs font-medium text-slate-700">
@@ -447,9 +489,16 @@ export default function SellerDashboardPage() {
                   type="number"
                   min={1}
                   max={10}
+                  aria-invalid={Boolean(errs.durationDays)}
+                  aria-describedby={errs.durationDays ? 'lot-duration-err' : undefined}
                   {...form.register('durationDays')}
-                  className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm"
+                  className={`w-full rounded-lg border px-2.5 py-2 text-sm ${errs.durationDays ? 'border-rose-500' : 'border-slate-300'}`}
                 />
+                {errs.durationDays?.message && (
+                  <p id="lot-duration-err" role="alert" className="mt-1 text-xs text-rose-600">
+                    {errs.durationDays.message}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -459,7 +508,7 @@ export default function SellerDashboardPage() {
               disabled={saveMutation.isPending}
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
             >
-              {selectedLot?.status === 'draft' ? t('saveDraftButton') : t('createButton')}
+              {canFullEdit ? t('saveDraftButton') : t('createButton')}
             </button>
           </form>
 
@@ -476,7 +525,7 @@ export default function SellerDashboardPage() {
                 <ul className="flex flex-wrap gap-2">
                   {draftPhotosQuery.data.map((p) => (
                     <li key={p.id} className="flex items-center gap-2 rounded border border-slate-200 px-2 py-1 text-xs">
-                      <span>#{p.position + 1} ({p.status})</span>
+                      <span>#{p.position + 1} ({t(`photoStatus.${p.status}`)})</span>
                       <button
                         type="button"
                         onClick={() => deletePhotoMutation.mutate({ lotId: selectedLot.id, photoId: p.id })}
@@ -640,13 +689,24 @@ export default function SellerDashboardPage() {
                     </button>
                   )}
                   {l.status === 'active' && (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedLot(l)}
-                      className="rounded border border-slate-300 px-2.5 py-1 text-xs font-medium hover:bg-slate-50"
-                    >
-                      {t('appendButton')}
-                    </button>
+                    <>
+                      {l.bidCount === 0 && (
+                        <button
+                          type="button"
+                          onClick={() => startEdit(l)}
+                          className="rounded border border-slate-300 px-2.5 py-1 text-xs font-medium hover:bg-slate-50"
+                        >
+                          {t('editLotTitle')}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLot(l)}
+                        className="rounded border border-slate-300 px-2.5 py-1 text-xs font-medium hover:bg-slate-50"
+                      >
+                        {t('appendButton')}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

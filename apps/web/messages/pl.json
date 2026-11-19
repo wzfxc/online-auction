@@ -100,7 +100,10 @@
     "buyNowBadge": "Kup teraz: {price}",
     "noBidsBadge": "Bez ofert",
     "ended": "Zakończona",
-    "timeLeft": "Pozostało: {time}"
+    "timeLeft": "Pozostało: {time}",
+    "invalidMinPrice": "Cena minimalna musi być liczbą nieujemną",
+    "invalidMaxPrice": "Cena maksymalna musi być liczbą nieujemną",
+    "invalidPriceRange": "Cena minimalna nie może przekraczać maksymalnej"
   },
   "lot": {
     "backToCatalog": "Powrót do katalogu",
@@ -152,7 +155,24 @@
     "trackingPlaceholder": "Np. NP-20450012345",
     "shipButton": "Potwierdź wysyłkę",
     "confirmReceiptButton": "Potwierdź odbiór",
-    "autoConfirmNote": "Odbiór zostanie potwierdzony automatycznie po 7 dniach od wysyłki, jeśli kupujący nie zrobi tego wcześniej."
+    "autoConfirmNote": "Odbiór zostanie potwierdzony automatycznie po 7 dniach od wysyłki, jeśli kupujący nie zrobi tego wcześniej.",
+    "eventTypes": {
+      "created": "Utworzono szkic",
+      "updated": "Zaktualizowano aukcję",
+      "submitted": "Wysłano do moderacji",
+      "review_claimed": "Przejęto przez moderatora",
+      "review_lease_expired": "Wygasła rezerwacja moderatora",
+      "approved": "Zatwierdzono i opublikowano",
+      "rejected": "Odrzucono przez moderatora",
+      "reopened": "Przywrócono do szkicu",
+      "description_appended": "Dopisano do opisu",
+      "bid": "Złożono ofertę",
+      "extended": "Przedłużono (anti-sniping)",
+      "status": "Zmiana statusu",
+      "second_chance": "Oferta drugiej szansy",
+      "removed": "Zdjęto przez moderatora",
+      "photo_deleted": "Usunięto zdjęcie"
+    }
   },
   "auth": {
     "loginTitle": "Logowanie",
@@ -199,6 +219,20 @@
       "user_available": "Saldo dostępne",
       "user_hold": "Kaucja",
       "seller_payable": "Do wypłaty"
+    },
+    "ledgerColumns": {
+      "kind": "Operacja",
+      "account": "Konto",
+      "lot": "Aukcja",
+      "amount": "Kwota",
+      "date": "Data"
+    },
+    "notificationTypes": {
+      "outbid": "Twoja oferta została przebita",
+      "ending_soon": "Ulubiona aukcja wkrótce się kończy",
+      "lot_removed": "Aukcja zdjęta przez moderatora",
+      "won": "Wygrałeś aukcję",
+      "second_chance": "Oferta drugiej szansy"
     }
   },
   "seller": {
@@ -206,7 +240,7 @@
     "pendingPayout": "Oczekuje na potwierdzenie (escrow)",
     "paidOutTotal": "Naliczone do wypłaty",
     "createLotTitle": "Utwórz nową aukcję",
-    "editLotTitle": "Edytuj szkic",
+    "editLotTitle": "Edytuj aukcję",
     "titleLabel": "Tytuł",
     "descriptionLabel": "Opis",
     "categoryLabel": "Kategoria",
@@ -231,7 +265,20 @@
     "noLots": "Brak aukcji w tym statusie.",
     "salesTitle": "Sprzedaż i wysyłka",
     "noSales": "Brak sprzedaży.",
-    "reserveHiddenLabel": "Twoja cena minimalna: {price}"
+    "reserveHiddenLabel": "Twoja cena minimalna: {price}",
+    "validationTitleRequired": "Podaj tytuł (min. 3 znaki)",
+    "validationDescRequired": "Podaj opis aukcji",
+    "validationStartPrice": "Podaj poprawną cenę wywoławczą (> 0)",
+    "validationReservePrice": "Cena minimalna nie może być niższa od wywoławczej",
+    "validationBuyNowPrice": "Cena „Kup teraz” nie może być niższa od wywoławczej",
+    "validationDuration": "Czas trwania musi wynosić od 1 do 10 dni",
+    "photoStatus": {
+      "pending_upload": "oczekuje na przesłanie",
+      "uploaded": "przetwarzanie",
+      "processed": "gotowe"
+    },
+    "photoInvalidType": "Dozwolone tylko JPEG, PNG lub WebP",
+    "photoUploadFailed": "Przesyłanie nie powiodło się (kod {status})"
   },
   "moderator": {
     "title": "Panel moderatora",
@@ -245,7 +292,12 @@
     "removeSectionTitle": "Zdejmij opublikowaną aukcję",
     "removeLotIdLabel": "UUID aukcji",
     "removeReasonLabel": "Powód zdjęcia",
-    "removeButton": "Zdejmij aukcję (zwolnij kaucje)"
+    "removeButton": "Zdejmij aukcję (zwolnij kaucje)",
+    "openLot": "Otwórz aukcję →",
+    "photosCount": "Zdjęcia: {count}",
+    "statusApproved": "Zatwierdzono",
+    "statusRejected": "Odrzucono",
+    "statusRemoved": "Zdjęto"
   },
   "finance": {
     "title": "Panel finansisty",
@@ -301,6 +353,9 @@
     "PHOTO_TOO_LARGE": "Plik przekracza dozwolony rozmiar.",
     "SEARCH_UNAVAILABLE": "Wyszukiwarka jest chwilowo niedostępna.",
     "IDEMPOTENCY_KEY_REUSED": "Klucz Idempotency-Key został ponownie użyty z inną treścią.",
+    "RATE_LIMIT_EXCEEDED": "Zbyt wiele żądań. Spróbuj ponownie za chwilę.",
+    "INVALID_IMAGE": "Przesłany plik nie jest prawidłowym obrazem wybranego formatu.",
+    "PAYMENT_SESSION_EXPIRED": "Sesja płatności wygasła.",
     "INTERNAL_ERROR": "Nieoczekiwany błąd serwera. Spróbuj ponownie później."
   }
 }

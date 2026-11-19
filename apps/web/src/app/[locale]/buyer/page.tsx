@@ -18,6 +18,7 @@ interface TopUpForm {
 
 export default function BuyerDashboardPage() {
   const t = useTranslations('buyer');
+  const tNav = useTranslations('nav');
   const tLot = useTranslations('lot');
   const tStatus = useTranslations('lotStatus');
   const tSaleStatus = useTranslations('saleStatus');
@@ -114,7 +115,7 @@ export default function BuyerDashboardPage() {
       <div className="rounded-xl border border-amber-300 bg-amber-50 p-6 text-sm text-amber-900">
         {tErrors('UNAUTHORIZED')}{' '}
         <Link href="/login" className="font-semibold underline">
-          Login
+          {tNav('login')}
         </Link>
       </div>
     );
@@ -326,7 +327,7 @@ export default function BuyerDashboardPage() {
           <ul className="divide-y divide-slate-100 text-xs">
             {notificationsQuery.data.map((n) => (
               <li key={n.id} className={`flex items-center justify-between py-2 ${n.read ? 'text-slate-500' : 'font-semibold text-slate-900'}`}>
-                <span>{n.type}</span>
+                <span>{t.has(`notificationTypes.${n.type}`) ? t(`notificationTypes.${n.type}`) : n.type}</span>
                 <span>{formatDateTime(n.createdAt, locale)}</span>
               </li>
             ))}
@@ -343,11 +344,11 @@ export default function BuyerDashboardPage() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500">
-                  <th className="py-2 pr-3">Kind</th>
-                  <th className="py-2 pr-3">Account</th>
-                  <th className="py-2 pr-3">Lot</th>
-                  <th className="py-2 pr-3 text-right">Amount</th>
-                  <th className="py-2 text-right">Date</th>
+                  <th className="py-2 pr-3">{t('ledgerColumns.kind')}</th>
+                  <th className="py-2 pr-3">{t('ledgerColumns.account')}</th>
+                  <th className="py-2 pr-3">{t('ledgerColumns.lot')}</th>
+                  <th className="py-2 pr-3 text-right">{t('ledgerColumns.amount')}</th>
+                  <th className="py-2 text-right">{t('ledgerColumns.date')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

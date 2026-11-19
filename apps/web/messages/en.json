@@ -100,7 +100,10 @@
     "buyNowBadge": "Buy now: {price}",
     "noBidsBadge": "No bids",
     "ended": "Ended",
-    "timeLeft": "Left: {time}"
+    "timeLeft": "Left: {time}",
+    "invalidMinPrice": "Minimum price must be a non-negative number",
+    "invalidMaxPrice": "Maximum price must be a non-negative number",
+    "invalidPriceRange": "Minimum price cannot exceed maximum price"
   },
   "lot": {
     "backToCatalog": "Back to catalog",
@@ -152,7 +155,24 @@
     "trackingPlaceholder": "e.g. NP-20450012345",
     "shipButton": "Confirm shipment",
     "confirmReceiptButton": "Confirm receipt",
-    "autoConfirmNote": "Receipt is confirmed automatically 7 days after shipment if not confirmed earlier."
+    "autoConfirmNote": "Receipt is confirmed automatically 7 days after shipment if not confirmed earlier.",
+    "eventTypes": {
+      "created": "Draft created",
+      "updated": "Lot updated",
+      "submitted": "Submitted for review",
+      "review_claimed": "Claimed by moderator",
+      "review_lease_expired": "Moderator lease expired",
+      "approved": "Approved and published",
+      "rejected": "Rejected by moderator",
+      "reopened": "Reopened to draft",
+      "description_appended": "Description appended",
+      "bid": "Bid placed",
+      "extended": "Extended (anti-sniping)",
+      "status": "Status changed",
+      "second_chance": "Second-chance offer",
+      "removed": "Removed by moderator",
+      "photo_deleted": "Photo deleted"
+    }
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -199,6 +219,20 @@
       "user_available": "Available balance",
       "user_hold": "Deposit hold",
       "seller_payable": "Seller payable"
+    },
+    "ledgerColumns": {
+      "kind": "Kind",
+      "account": "Account",
+      "lot": "Lot",
+      "amount": "Amount",
+      "date": "Date"
+    },
+    "notificationTypes": {
+      "outbid": "You were outbid",
+      "ending_soon": "Favorite lot ending soon",
+      "lot_removed": "Lot removed by moderator",
+      "won": "You won the lot",
+      "second_chance": "Second-chance offer"
     }
   },
   "seller": {
@@ -206,7 +240,7 @@
     "pendingPayout": "Pending confirmation (escrow)",
     "paidOutTotal": "Credited payout balance",
     "createLotTitle": "Create new lot",
-    "editLotTitle": "Edit draft",
+    "editLotTitle": "Edit lot",
     "titleLabel": "Title",
     "descriptionLabel": "Description",
     "categoryLabel": "Category",
@@ -231,7 +265,20 @@
     "noLots": "No lots in this status.",
     "salesTitle": "Sales & shipping",
     "noSales": "No sales yet.",
-    "reserveHiddenLabel": "Your reserve: {price}"
+    "reserveHiddenLabel": "Your reserve: {price}",
+    "validationTitleRequired": "Enter a title (min 3 characters)",
+    "validationDescRequired": "Enter a description",
+    "validationStartPrice": "Enter a valid positive start price",
+    "validationReservePrice": "Reserve price cannot be below start price",
+    "validationBuyNowPrice": "Buy-now price cannot be below start price",
+    "validationDuration": "Duration must be between 1 and 10 days",
+    "photoStatus": {
+      "pending_upload": "pending upload",
+      "uploaded": "processing",
+      "processed": "ready"
+    },
+    "photoInvalidType": "JPEG, PNG or WebP only",
+    "photoUploadFailed": "Upload failed (status {status})"
   },
   "moderator": {
     "title": "Moderation dashboard",
@@ -245,7 +292,12 @@
     "removeSectionTitle": "Take down a published lot",
     "removeLotIdLabel": "Lot UUID",
     "removeReasonLabel": "Removal reason",
-    "removeButton": "Remove lot (release deposits)"
+    "removeButton": "Remove lot (release deposits)",
+    "openLot": "Open lot →",
+    "photosCount": "Photos: {count}",
+    "statusApproved": "Approved",
+    "statusRejected": "Rejected",
+    "statusRemoved": "Removed"
   },
   "finance": {
     "title": "Finance dashboard",
@@ -301,6 +353,9 @@
     "PHOTO_TOO_LARGE": "Uploaded file exceeds allowed size.",
     "SEARCH_UNAVAILABLE": "Search is temporarily unavailable.",
     "IDEMPOTENCY_KEY_REUSED": "Idempotency-Key reused with a different request payload.",
+    "RATE_LIMIT_EXCEEDED": "Too many requests. Please wait a moment.",
+    "INVALID_IMAGE": "Uploaded file is not a valid image of the selected format.",
+    "PAYMENT_SESSION_EXPIRED": "Payment session has expired.",
     "INTERNAL_ERROR": "Unexpected server error. Please try again later."
   }
 }

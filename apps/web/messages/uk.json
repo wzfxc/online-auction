@@ -100,7 +100,10 @@
     "buyNowBadge": "Купити зараз: {price}",
     "noBidsBadge": "Без ставок",
     "ended": "Завершено",
-    "timeLeft": "Залишилось: {time}"
+    "timeLeft": "Залишилось: {time}",
+    "invalidMinPrice": "Мінімальна ціна має бути невід'ємним числом",
+    "invalidMaxPrice": "Максимальна ціна має бути невід'ємним числом",
+    "invalidPriceRange": "Мінімальна ціна не може перевищувати максимальну"
   },
   "lot": {
     "backToCatalog": "До каталогу",
@@ -152,7 +155,24 @@
     "trackingPlaceholder": "Наприклад: NP-20450012345",
     "shipButton": "Підтвердити відправку",
     "confirmReceiptButton": "Підтвердити отримання",
-    "autoConfirmNote": "Після відправки підтвердження відбудеться автоматично через 7 днів, якщо покупець не підтвердить раніше."
+    "autoConfirmNote": "Після відправки підтвердження відбудеться автоматично через 7 днів, якщо покупець не підтвердить раніше.",
+    "eventTypes": {
+      "created": "Створено чернетку",
+      "updated": "Оновлено поля лота",
+      "submitted": "Надіслано на модерацію",
+      "review_claimed": "Взято модератором на перевірку",
+      "review_lease_expired": "Оренда модератора минула",
+      "approved": "Схвалено та опубліковано",
+      "rejected": "Відхилено модератором",
+      "reopened": "Повернуто в чернетку",
+      "description_appended": "Додано до опису",
+      "bid": "Ставка",
+      "extended": "Продовжено (антиснайпінг)",
+      "status": "Зміна статусу",
+      "second_chance": "Пропозиція другого шансу",
+      "removed": "Знято модератором",
+      "photo_deleted": "Видалено фото"
+    }
   },
   "auth": {
     "loginTitle": "Вхід у систему",
@@ -199,6 +219,20 @@
       "user_available": "Доступний баланс",
       "user_hold": "Застава",
       "seller_payable": "До виплати продавцю"
+    },
+    "ledgerColumns": {
+      "kind": "Операція",
+      "account": "Рахунок",
+      "lot": "Лот",
+      "amount": "Сума",
+      "date": "Дата"
+    },
+    "notificationTypes": {
+      "outbid": "Вашу ставку перебито",
+      "ending_soon": "Обраний лот скоро закінчиться",
+      "lot_removed": "Лот знято модератором",
+      "won": "Ви виграли лот",
+      "second_chance": "Пропозиція другого шансу"
     }
   },
   "seller": {
@@ -206,7 +240,7 @@
     "pendingPayout": "Очікує підтвердження (в ескроу)",
     "paidOutTotal": "Нараховано до виплати",
     "createLotTitle": "Створити новий лот",
-    "editLotTitle": "Редагувати чернетку",
+    "editLotTitle": "Редагувати лот",
     "titleLabel": "Назва",
     "descriptionLabel": "Опис",
     "categoryLabel": "Категорія",
@@ -231,7 +265,20 @@
     "noLots": "Лотів у цьому статусі немає.",
     "salesTitle": "Продажі та відправка",
     "noSales": "Продажів поки що немає.",
-    "reserveHiddenLabel": "Ваш резерв: {price}"
+    "reserveHiddenLabel": "Ваш резерв: {price}",
+    "validationTitleRequired": "Вкажіть назву (від 3 символів)",
+    "validationDescRequired": "Додайте опис лота",
+    "validationStartPrice": "Вкажіть коректну стартову ціну (> 0)",
+    "validationReservePrice": "Резервна ціна не може бути нижчою за стартову",
+    "validationBuyNowPrice": "Ціна «Купити зараз» не може бути нижчою за стартову",
+    "validationDuration": "Тривалість має бути від 1 до 10 днів",
+    "photoStatus": {
+      "pending_upload": "очікує завантаження",
+      "uploaded": "в обробці",
+      "processed": "готово"
+    },
+    "photoInvalidType": "Дозволені лише JPEG, PNG або WebP",
+    "photoUploadFailed": "Не вдалося завантажити фото (код {status})"
   },
   "moderator": {
     "title": "Кабінет модератора",
@@ -245,7 +292,12 @@
     "removeSectionTitle": "Зняти опублікований лот з торгів",
     "removeLotIdLabel": "UUID лота",
     "removeReasonLabel": "Причина зняття",
-    "removeButton": "Зняти лот (повернути застави)"
+    "removeButton": "Зняти лот (повернути застави)",
+    "openLot": "Відкрити лот →",
+    "photosCount": "Фото: {count}",
+    "statusApproved": "Лот схвалено",
+    "statusRejected": "Лот відхилено",
+    "statusRemoved": "Лот знято"
   },
   "finance": {
     "title": "Кабінет фінансиста",
@@ -301,6 +353,9 @@
     "PHOTO_TOO_LARGE": "Розмір файлу перевищує дозволений.",
     "SEARCH_UNAVAILABLE": "Пошук тимчасово недоступний.",
     "IDEMPOTENCY_KEY_REUSED": "Повторний запит із тим самим ключем, але іншими параметрами.",
+    "RATE_LIMIT_EXCEEDED": "Забагато запитів. Спробуйте за кілька секунд.",
+    "INVALID_IMAGE": "Файл не є коректним зображенням обраного формату.",
+    "PAYMENT_SESSION_EXPIRED": "Термін дії платіжної сесії вичерпано.",
     "INTERNAL_ERROR": "Внутрішня помилка сервера. Спробуйте пізніше."
   }
 }

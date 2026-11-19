@@ -525,7 +525,9 @@ export default function LotDetailPage() {
               <ul className="space-y-1.5 text-xs text-slate-600">
                 {auditHistoryQuery.data.map((ev) => (
                   <li key={ev.id} className="flex justify-between gap-4 border-b border-slate-100 pb-1">
-                    <span className="font-mono font-semibold text-slate-800">{ev.type}</span>
+                    <span className="font-semibold text-slate-800">
+                      {t.has(`eventTypes.${ev.type}`) ? t(`eventTypes.${ev.type}`) : ev.type}
+                    </span>
                     <span>{formatDateTime(ev.createdAt, locale)}</span>
                   </li>
                 ))}

@@ -44,27 +44,86 @@ function CatalogContent() {
   const categoryId = searchParams.get('categoryId') ?? '';
   const cityId = searchParams.get('cityId') ?? '';
   const condition = searchParams.get('condition') ?? '';
-  const status = (STATUS_OPTIONS.includes(searchParams.get('status') as SearchStatus)
-    ? searchParams.get('status')
-    : 'active') as SearchStatus;
+  const rawStatus = searchParams.get('status');
+  const status = (STATUS_OPTIONS.includes(rawStatus as SearchStatus) ? rawStatus : 'active') as SearchStatus;
   const minPriceParam = searchParams.get('minPrice') ?? '';
   const maxPriceParam = searchParams.get('maxPrice') ?? '';
   const noBids = searchParams.get('noBids') === 'true';
   const endingSoon = searchParams.get('endingSoon') === 'true';
-  const sort = (SORT_OPTIONS.includes(searchParams.get('sort') as SortOption)
-    ? searchParams.get('sort')
-    : 'relevance') as SortOption;
-  const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1);
+  const rawSort = searchParams.get('sort');
+  const sort = (SORT_OPTIONS.includes(rawSort as SortOption) ? rawSort : 'relevance') as SortOption;
+  const rawPage = searchParams.get('page');
+  const parsedPage = rawPage ? Number(rawPage) : 1;
+  const pageValid = !rawPage || (Number.isInteger(parsedPage) && parsedPage >= 1 && parsedPage <= 500);
+  const page = pageValid ? parsedPage : 1;
+
+  const parseNonNegKop = (raw: string): number | undefined | 'invalid' => {
+    if (!raw) return undefined;
+    const kop = uahToKopecks(raw);
+    return kop === null ? 'invalid' : kop;
+  };
+  const parsedMin = parseNonNegKop(minPriceParam);
+  const parsedMax = parseNonNegKop(maxPriceParam);
+  const minPriceKop = parsedMin === 'invalid' ? undefined : parsedMin;
+  const maxPriceKop = parsedMax === 'invalid' ? undefined : parsedMax;
 
   const [qInput, setQInput] = useState(q);
   const [minInput, setMinInput] = useState(minPriceParam);
   const [maxInput, setMaxInput] = useState(maxPriceParam);
+  const [filterError, setFilterError] = useState<string | null>(null);
 
   useEffect(() => {
     setQInput(q);
-    setMinInput(minPriceParam);
-    setMaxInput(maxPriceParam);
-  }, [q, minPriceParam, maxPriceParam]);
+    setMinInput(parsedMin === 'invalid' ? '' : minPriceParam);
+    setMaxInput(parsedMax === 'invalid' ? '' : maxPriceParam);
+  }, [q, minPriceParam, maxPriceParam, parsedMin, parsedMax]);
+
+  // Strip or normalize malformed query parameters (e.g. minPrice=-5) instead of silently ignoring them in the URL.
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams.toString());
+    let changed = false;
+    if (minPriceParam && parsedMin === 'invalid') {
+      next.delete('minPrice');
+      changed = true;
+    }
+    if (maxPriceParam && parsedMax === 'invalid') {
+      next.delete('maxPrice');
+      changed = true;
+    }
+    if (rawStatus && !STATUS_OPTIONS.includes(rawStatus as SearchStatus)) {
+      next.delete('status');
+      changed = true;
+    }
+    if (rawSort && !SORT_OPTIONS.includes(rawSort as SortOption)) {
+      next.delete('sort');
+      changed = true;
+    }
+    if (!pageValid) {
+      next.delete('page');
+      changed = true;
+    }
+    if (minPriceKop !== undefined && maxPriceKop !== undefined && minPriceKop > maxPriceKop) {
+      next.delete('maxPrice');
+      changed = true;
+    }
+    if (changed) {
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
+    }
+  }, [
+    searchParams,
+    minPriceParam,
+    maxPriceParam,
+    parsedMin,
+    parsedMax,
+    minPriceKop,
+    maxPriceKop,
+    rawStatus,
+    rawSort,
+    pageValid,
+    pathname,
+    router,
+  ]);
 
   const updateUrl = (patch: Record<string, string | null>, resetPage = true) => {
     const next = new URLSearchParams(searchParams.toString());
@@ -77,8 +136,24 @@ function CatalogContent() {
     router.push(qs ? `${pathname}?${qs}` : pathname);
   };
 
-  const minPriceKop = minPriceParam ? uahToKopecks(minPriceParam) ?? undefined : undefined;
-  const maxPriceKop = maxPriceParam ? uahToKopecks(maxPriceParam) ?? undefined : undefined;
+  const applyPriceAndSearch = (nextQ: string, nextMinRaw: string, nextMaxRaw: string) => {
+    const minCheck = nextMinRaw ? uahToKopecks(nextMinRaw) : undefined;
+    const maxCheck = nextMaxRaw ? uahToKopecks(nextMaxRaw) : undefined;
+    if (nextMinRaw && minCheck === null) {
+      setFilterError(t('invalidMinPrice'));
+      return;
+    }
+    if (nextMaxRaw && maxCheck === null) {
+      setFilterError(t('invalidMaxPrice'));
+      return;
+    }
+    if (minCheck != null && maxCheck != null && minCheck > maxCheck) {
+      setFilterError(t('invalidPriceRange'));
+      return;
+    }
+    setFilterError(null);
+    updateUrl({ q: nextQ, minPrice: nextMinRaw, maxPrice: nextMaxRaw });
+  };
 
   const searchQuery = useQuery({
     queryKey: [
@@ -109,6 +184,14 @@ function CatalogContent() {
   });
 
   const data = searchQuery.data;
+  const lotIdsParam = data?.items.map((item) => item.id).join(',') ?? '';
+  const thumbnailsQuery = useQuery({
+    queryKey: ['lot-thumbnails', lotIdsParam],
+    enabled: lotIdsParam.length > 0,
+    staleTime: 60_000,
+    queryFn: async () =>
+      unwrap(await client.GET('/media/thumbnails', { params: { query: { ids: lotIdsParam } } })),
+  });
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
   const isSearchDown =
     searchQuery.error instanceof ApiClientError && searchQuery.error.code === 'SEARCH_UNAVAILABLE';
@@ -132,7 +215,7 @@ function CatalogContent() {
           className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
           onSubmit={(e) => {
             e.preventDefault();
-            updateUrl({ q: qInput.trim(), minPrice: minInput.trim(), maxPrice: maxInput.trim() });
+            applyPriceAndSearch(qInput.trim(), minInput.trim(), maxInput.trim());
           }}
         >
           <div className="sm:col-span-2">
@@ -254,8 +337,11 @@ function CatalogContent() {
                 type="number"
                 min={0}
                 value={minInput}
-                onChange={(e) => setMinInput(e.target.value)}
-                onBlur={() => updateUrl({ minPrice: minInput.trim() })}
+                onChange={(e) => {
+                  setMinInput(e.target.value);
+                  setFilterError(null);
+                }}
+                onBlur={() => applyPriceAndSearch(qInput.trim(), minInput.trim(), maxInput.trim())}
                 className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm"
               />
             </div>
@@ -268,12 +354,21 @@ function CatalogContent() {
                 type="number"
                 min={0}
                 value={maxInput}
-                onChange={(e) => setMaxInput(e.target.value)}
-                onBlur={() => updateUrl({ maxPrice: maxInput.trim() })}
+                onChange={(e) => {
+                  setMaxInput(e.target.value);
+                  setFilterError(null);
+                }}
+                onBlur={() => applyPriceAndSearch(qInput.trim(), minInput.trim(), maxInput.trim())}
                 className="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm"
               />
             </div>
           </div>
+
+          {filterError && (
+            <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800 sm:col-span-2 lg:col-span-4">
+              {filterError}
+            </div>
+          )}
 
           <div>
             <label htmlFor="filter-sort" className="mb-1 block text-xs font-medium text-slate-600">
@@ -316,7 +411,10 @@ function CatalogContent() {
 
             <button
               type="button"
-              onClick={() => router.push(pathname)}
+              onClick={() => {
+                setFilterError(null);
+                router.push(pathname);
+              }}
               className="ml-auto rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
             >
               {t('resetFilters')}
@@ -352,7 +450,12 @@ function CatalogContent() {
               data-testid={`lot-card-${item.id}`}
               className="group flex flex-col rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-brand-500 hover:shadow-md"
             >
-              <LotThumbnail lotId={item.id} title={item.title} />
+              <LotThumbnail
+                lotId={item.id}
+                title={item.title}
+                managed
+                thumbnailUrl={thumbnailsQuery.data?.thumbnails[item.id] ?? null}
+              />
               <div className="flex flex-1 flex-col justify-between p-4">
                 <div>
                   <div className="mb-1 flex items-center justify-between gap-2 text-xs text-slate-500">

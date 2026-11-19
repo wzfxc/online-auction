@@ -38,7 +38,7 @@ export default function ModeratorDashboardPage() {
       unwrap(await client.POST('/lots/{id}/approve', { params: { path: { id: lotId } } })),
     onSuccess: () => {
       setClaimedLot(undefined);
-      setStatusMessage('Approved');
+      setStatusMessage(t('statusApproved'));
     },
   });
 
@@ -53,7 +53,7 @@ export default function ModeratorDashboardPage() {
     onSuccess: () => {
       setClaimedLot(undefined);
       setRejectReason('');
-      setStatusMessage('Rejected');
+      setStatusMessage(t('statusRejected'));
     },
   });
 
@@ -68,7 +68,7 @@ export default function ModeratorDashboardPage() {
     onSuccess: () => {
       setRemoveLotId('');
       setRemoveReason('');
-      setStatusMessage('Removed');
+      setStatusMessage(t('statusRemoved'));
     },
   });
 
@@ -123,7 +123,7 @@ export default function ModeratorDashboardPage() {
                 <p className="text-xs text-slate-500">ID: {claimedLot.id}</p>
               </div>
               <Link href={`/lots/${claimedLot.id}`} className="text-xs font-medium text-brand-700 hover:underline">
-                Open lot →
+                {t('openLot')}
               </Link>
             </div>
             <p className="whitespace-pre-line text-sm text-slate-700">{claimedLot.description}</p>
@@ -132,7 +132,7 @@ export default function ModeratorDashboardPage() {
               {claimedLot.buyNowPrice !== null && (
                 <span>{tLot('buyNowPrice')}: {formatMoney(claimedLot.buyNowPrice, locale)}</span>
               )}
-              <span>Photos: {claimedPhotosQuery.data?.length ?? 0}</span>
+              <span>{t('photosCount', { count: claimedPhotosQuery.data?.length ?? 0 })}</span>
             </div>
 
             <div className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-3">
