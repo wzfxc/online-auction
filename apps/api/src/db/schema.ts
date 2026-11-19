@@ -248,6 +248,7 @@ export const sales = pgTable('sales', {
   uniqueIndex('sales_one_live_per_lot_uq').on(t.lotId).where(sql`${t.status} in ('paid','shipped','completed')`),
   index('sales_due_idx').on(t.status, t.payDueAt),
   index('sales_buyer_idx').on(t.buyerId),
+  index('sales_created_status_idx').on(t.createdAt, t.status),
 ]);
 
 export const favorites = pgTable('favorites', {

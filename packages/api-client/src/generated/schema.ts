@@ -466,6 +466,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports/period": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Turnover, commission, share of unpaid wins and category breakdown for a period (finance) */
+        get: operations["getPeriodReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ledger zero-sum check, account balance vs entries check, and payment stub discrepancies (finance) */
+        get: operations["getReconciliationReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/moderation/claim": {
         parameters: {
             query?: never;
@@ -3318,6 +3352,166 @@ export interface operations {
                         code: string;
                         message: string;
                         details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    getPeriodReport: {
+        parameters: {
+            query?: {
+                from?: unknown | string;
+                to?: unknown | string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: date-time */
+                        from: string;
+                        /** Format: date-time */
+                        to: string;
+                        turnover: number;
+                        commission: number;
+                        totalWins: number;
+                        paidWins: number;
+                        unpaidWins: number;
+                        awaitingPaymentWins: number;
+                        unpaidShare: number;
+                        byCategory: {
+                            /** Format: uuid */
+                            categoryId: string;
+                            slug: string;
+                            nameUk: string;
+                            nameEn: string;
+                            namePl: string;
+                            paidCount: number;
+                            unpaidCount: number;
+                            turnover: number;
+                            commission: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    getReconciliationReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        healthy: boolean;
+                        entriesSum: number;
+                        unbalancedTransactions: string[];
+                        checkedAccounts: number;
+                        walletMismatches: {
+                            /** Format: uuid */
+                            accountId: string;
+                            /** Format: uuid */
+                            userId: string | null;
+                            type: string;
+                            accountBalance: number;
+                            entriesSum: number;
+                        }[];
+                        checkedPayments: number;
+                        paymentDiscrepancies: {
+                            /** Format: uuid */
+                            paymentId: string;
+                            /** Format: uuid */
+                            userId: string;
+                            amount: number;
+                            dbStatus: string;
+                            /** @enum {string} */
+                            providerStatus: "pending" | "succeeded" | "failed" | "expired";
+                            ledgerCredited: boolean;
+                            /** @enum {string} */
+                            reason: "status_mismatch" | "missing_ledger_credit" | "unexpected_ledger_credit";
+                        }[];
                     };
                 };
             };

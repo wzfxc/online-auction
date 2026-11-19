@@ -20,7 +20,7 @@
 | 14 | OpenAPI-клієнт | ✅ (усі контролери: auth, лоти, ставки, гаманець, модерація, медіа, пошук, нотифікації, вебхук і сторінка оплати заглушки, `/health`; `main.ts` API з RealtimeServer; процес worker із DB-свіперами; клієнт згенеровано) |
 | 14б | Продажі й довідники для веба | ✅ (SalesService: оплата виграшу з гаманця в межах 48 год із заліком залогу та проводками подвійного запису, відправка з трек-номером, підтвердження отримання + свіпер автопідтвердження через 7 днів, виплата продавцю за вирахуванням комісії D3; приховування переможця до оплати; обране + нагадування за 1 год; історія гаманця; «мої лоти» та сума до виплати; списки категорій/міст; повторне відкриття `ended_unsold` → `draft`; фільтр `noBids` у пошуку; контролери + OpenAPI + клієнт + int-тести) |
 | 15 | Веб | ⬜ (apps/web містить лише package.json) |
-| 16 | Звіти, звірка | ⬜ |
+| 16 | Звіти, звірка | ✅ (`ReportService` + `ReportsController` `/reports/period`, `/reports/reconciliation`: оборот, комісія, частка неоплачених виграшів, розбивка по категоріях < 500 мс за 90 днів з індексом `sales(created_at, status)`; звірка: сума проводок = 0, баланси гаманців = сумі проводок, розбіжності з платіжною заглушкою; int-тести) |
 | 17 | Сид | ⬜ |
 | 18 | Локалізація | ⬜ |
 | 19 | e2e | ⬜ |
@@ -116,3 +116,4 @@
 | (етап 14, ч.2) | `feat(api): bootstrap api and worker processes, health, config` |
 | (крок 0) | `feat(api): connect smtp mail stub, share payment stub sessions in db, fix ci services` |
 | (етап 14б) | `feat(sales): win payment with deposit credit, shipping, receipt confirmation, payout, favorites, references` |
+| (етап 16) | `feat(reports): period report with category breakdown and ledger/stub reconciliation` |

@@ -5978,6 +5978,421 @@
         ]
       }
     },
+    "/reports/period": {
+      "get": {
+        "operationId": "getPeriodReport",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "not": {}
+                },
+                {
+                  "type": "string",
+                  "minLength": 1
+                }
+              ]
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "not": {}
+                },
+                {
+                  "type": "string",
+                  "minLength": 1
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "from": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "to": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "turnover": {
+                      "type": "integer"
+                    },
+                    "commission": {
+                      "type": "integer"
+                    },
+                    "totalWins": {
+                      "type": "integer"
+                    },
+                    "paidWins": {
+                      "type": "integer"
+                    },
+                    "unpaidWins": {
+                      "type": "integer"
+                    },
+                    "awaitingPaymentWins": {
+                      "type": "integer"
+                    },
+                    "unpaidShare": {
+                      "type": "number"
+                    },
+                    "byCategory": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "categoryId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "slug": {
+                            "type": "string"
+                          },
+                          "nameUk": {
+                            "type": "string"
+                          },
+                          "nameEn": {
+                            "type": "string"
+                          },
+                          "namePl": {
+                            "type": "string"
+                          },
+                          "paidCount": {
+                            "type": "integer"
+                          },
+                          "unpaidCount": {
+                            "type": "integer"
+                          },
+                          "turnover": {
+                            "type": "integer"
+                          },
+                          "commission": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "categoryId",
+                          "slug",
+                          "nameUk",
+                          "nameEn",
+                          "namePl",
+                          "paidCount",
+                          "unpaidCount",
+                          "turnover",
+                          "commission"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "from",
+                    "to",
+                    "turnover",
+                    "commission",
+                    "totalWins",
+                    "paidWins",
+                    "unpaidWins",
+                    "awaitingPaymentWins",
+                    "unpaidShare",
+                    "byCategory"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Turnover, commission, share of unpaid wins and category breakdown for a period (finance)",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
+    "/reports/reconciliation": {
+      "get": {
+        "operationId": "getReconciliationReport",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "healthy": {
+                      "type": "boolean"
+                    },
+                    "entriesSum": {
+                      "type": "integer"
+                    },
+                    "unbalancedTransactions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "checkedAccounts": {
+                      "type": "integer"
+                    },
+                    "walletMismatches": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "accountId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "userId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "nullable": true
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "accountBalance": {
+                            "type": "integer"
+                          },
+                          "entriesSum": {
+                            "type": "integer"
+                          }
+                        },
+                        "required": [
+                          "accountId",
+                          "userId",
+                          "type",
+                          "accountBalance",
+                          "entriesSum"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "checkedPayments": {
+                      "type": "integer"
+                    },
+                    "paymentDiscrepancies": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "paymentId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "userId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "amount": {
+                            "type": "integer"
+                          },
+                          "dbStatus": {
+                            "type": "string"
+                          },
+                          "providerStatus": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "succeeded",
+                              "failed",
+                              "expired"
+                            ]
+                          },
+                          "ledgerCredited": {
+                            "type": "boolean"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "enum": [
+                              "status_mismatch",
+                              "missing_ledger_credit",
+                              "unexpected_ledger_credit"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "paymentId",
+                          "userId",
+                          "amount",
+                          "dbStatus",
+                          "providerStatus",
+                          "ledgerCredited",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "healthy",
+                    "entriesSum",
+                    "unbalancedTransactions",
+                    "checkedAccounts",
+                    "walletMismatches",
+                    "checkedPayments",
+                    "paymentDiscrepancies"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Ledger zero-sum check, account balance vs entries check, and payment stub discrepancies (finance)",
+        "tags": [
+          "reports"
+        ]
+      }
+    },
     "/moderation/claim": {
       "post": {
         "operationId": "claimNextLot",

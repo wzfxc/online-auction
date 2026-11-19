@@ -182,3 +182,56 @@ export const salesQuerySchema = z.object({
   role: z.enum(['buyer', 'seller']).optional(),
   status: z.enum(SALE_STATUSES).optional(),
 });
+
+export const categoryBreakdownSchema = z.object({
+  categoryId: z.string().uuid(),
+  slug: z.string(),
+  nameUk: z.string(),
+  nameEn: z.string(),
+  namePl: z.string(),
+  paidCount: z.number().int(),
+  unpaidCount: z.number().int(),
+  turnover: kopecks,
+  commission: kopecks,
+});
+
+export const periodReportSchema = z.object({
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+  turnover: kopecks,
+  commission: kopecks,
+  totalWins: z.number().int(),
+  paidWins: z.number().int(),
+  unpaidWins: z.number().int(),
+  awaitingPaymentWins: z.number().int(),
+  unpaidShare: z.number(),
+  byCategory: z.array(categoryBreakdownSchema),
+});
+
+export const walletMismatchSchema = z.object({
+  accountId: z.string().uuid(),
+  userId: z.string().uuid().nullable(),
+  type: z.string(),
+  accountBalance: kopecks,
+  entriesSum: kopecks,
+});
+
+export const paymentDiscrepancySchema = z.object({
+  paymentId: z.string().uuid(),
+  userId: z.string().uuid(),
+  amount: kopecks,
+  dbStatus: z.string(),
+  providerStatus: z.enum(['pending', 'succeeded', 'failed', 'expired']),
+  ledgerCredited: z.boolean(),
+  reason: z.enum(['status_mismatch', 'missing_ledger_credit', 'unexpected_ledger_credit']),
+});
+
+export const reconciliationReportSchema = z.object({
+  healthy: z.boolean(),
+  entriesSum: kopecks,
+  unbalancedTransactions: z.array(z.string()),
+  checkedAccounts: z.number().int(),
+  walletMismatches: z.array(walletMismatchSchema),
+  checkedPayments: z.number().int(),
+  paymentDiscrepancies: z.array(paymentDiscrepancySchema),
+});

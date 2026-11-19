@@ -36,6 +36,13 @@
       "when": 1795083669674,
       "tag": "0004_payment_stub_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795084669674,
+      "tag": "0005_reports_indexes",
+      "breakpoints": true
     }
   ]
 }

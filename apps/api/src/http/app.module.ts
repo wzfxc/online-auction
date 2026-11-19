@@ -10,6 +10,7 @@ import type { ObjectStorage } from '../media/storage.js';
 import { ModerationService } from '../moderation/moderation.js';
 import { NotificationService } from '../notifications/notifications.js';
 import { StubPaymentProvider } from '../payments-stub/provider.js';
+import { ReportService } from '../reports/reports.js';
 import { SalesService } from '../sales/sales.js';
 import { SearchService } from '../search/search.js';
 import type { Meilisearch } from 'meilisearch';
@@ -18,6 +19,7 @@ import { ModerationController } from './moderation.controller.js';
 import { NotificationsController } from './notifications.controller.js';
 import { PaymentsController } from './payments.controller.js';
 import { ReferenceController } from './reference.controller.js';
+import { ReportsController } from './reports.controller.js';
 import { SalesController } from './sales.controller.js';
 import { SearchController } from './search.controller.js';
 import { AuthController } from './auth.controller.js';
@@ -40,7 +42,8 @@ export interface ApiDeps {
 
 export const CONTROLLERS = [
   AuthController, LotsController, BidsController, WalletController, SalesController, ReferenceController,
-  ModerationController, MediaController, SearchController, NotificationsController, PaymentsController, HealthController,
+  ReportsController, ModerationController, MediaController, SearchController, NotificationsController,
+  PaymentsController, HealthController,
 ];
 
 /** The API never sends mail itself (the worker drains the outbox); reaching this is a wiring bug. */
@@ -57,6 +60,7 @@ export class AppModule {
       { provide: LotService, useValue: new LotService(deps.db, deps.clock) },
       { provide: BidService, useValue: new BidService(deps.db, deps.clock) },
       { provide: SalesService, useValue: new SalesService(deps.db, deps.clock) },
+      { provide: ReportService, useValue: new ReportService(deps.db, deps.clock, deps.paymentProvider) },
       {
         provide: PaymentService,
         useValue: new PaymentService(deps.db, deps.clock, deps.paymentProvider, deps.config.webhookSecret),
