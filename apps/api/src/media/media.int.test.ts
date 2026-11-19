@@ -94,6 +94,15 @@ describe('photo upload requests', () => {
     await expect(media.confirmUpload(seller, lotId, r.photoId)).rejects.toMatchObject({ code: 'PHOTO_NOT_UPLOADED' });
   });
 
+  it('refuses to confirm a photo after the lot left draft', async () => {
+    const lotId = await newLot();
+    const r = await media.requestUpload(seller, lotId, { contentType: 'image/jpeg', sizeBytes: 100 });
+    const [row] = await db.select().from(lotPhotos).where(eq(lotPhotos.id, r.photoId));
+    await storage.put(row!.objectKey, Buffer.alloc(50), 'image/jpeg');
+    await db.update(lots).set({ status: 'active' }).where(eq(lots.id, lotId));
+    await expect(media.confirmUpload(seller, lotId, r.photoId)).rejects.toMatchObject({ code: 'LOT_NOT_EDITABLE' });
+  });
+
   it('discards an upload larger than declared', async () => {
     const lotId = await newLot();
     const r = await media.requestUpload(seller, lotId, { contentType: 'image/jpeg', sizeBytes: 100 });

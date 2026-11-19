@@ -70,6 +70,9 @@ export class MediaService {
   async confirmUpload(user: Principal, lotId: string, photoId: string): Promise<PhotoDto> {
     const photo = await this.ownPhoto(user, lotId, photoId);
     if (photo.status !== 'pending_upload') return toPhotoDto(photo);
+    // A published or in-review lot must not gain new photos behind the moderator's back.
+    const [lot] = await this.db.select({ status: lots.status }).from(lots).where(eq(lots.id, lotId));
+    if (lot?.status !== 'draft') throw Errors.conflict('LOT_NOT_EDITABLE', 'Photos can be changed only while the lot is a draft');
     const head = await this.storage.head(photo.objectKey);
     if (!head) throw Errors.unprocessable('PHOTO_NOT_UPLOADED', 'The file has not been uploaded yet');
     if (head.size > PHOTO_MAX_BYTES || head.size > photo.sizeBytes) {

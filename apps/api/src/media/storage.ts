@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { CreateBucketCommand, DeleteObjectCommand, GetObjectCommand, HeadBucketCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -41,6 +41,16 @@ export class S3Storage implements ObjectStorage {
     const base = { region: cfg.region, forcePathStyle: true, credentials: { accessKeyId: cfg.accessKey, secretAccessKey: cfg.secretKey } };
     this.internal = new S3Client({ ...base, endpoint: cfg.endpoint });
     this.external = new S3Client({ ...base, endpoint: cfg.publicEndpoint });
+  }
+
+  /** Creates the (private) bucket if missing; safe to call on every start. */
+  async ensureBucket(): Promise<void> {
+    try {
+      await this.internal.send(new HeadBucketCommand({ Bucket: this.cfg.bucket }));
+    } catch (e) {
+      if (!isNotFound(e)) throw e;
+      await this.internal.send(new CreateBucketCommand({ Bucket: this.cfg.bucket }));
+    }
   }
 
   async presignUpload(key: string, contentType: string, maxBytes: number, ttlSeconds: number): Promise<PresignedUpload> {
