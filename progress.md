@@ -16,7 +16,7 @@
 | 10 | Медіа | ✅ (доменна логіка: presigned POST на тип+розмір, підтвердження, обробка sharp без EXIF + прев'ю 400 px, приватність; S3-адаптер перевірено проти живого MinIO (int-тест: чужий тип і 20 МБ відхиляються, неподписаний GET — відмова); задачі BullMQ/свіпер `findUnprocessed` — етап 12/14) |
 | 11 | Пошук + outbox | ✅ (тригер БД пише в `search_outbox` у транзакції запису; `SearchIndexer.drain` — SKIP LOCKED, апсерт/видалення, відкат при падінні Meilisearch; `reindexAll` — новий індекс + swap; `SearchService` з фільтрами/фасетами, 503 `SEARCH_UNAVAILABLE`. Цикл drain раз на ~1 с і CLI-команда реіндексу — з Nest-обв'язкою worker, етап 12/14) |
 | 12 | Сокети (2 репліки) | ✅ (`RealtimeServer` на Socket.IO без Nest-обв'язки: auth у handshake, підписка на лот зі снапшотом і догоном по `seq`, приватна кімната користувача, `time:sync`; шина — Postgres NOTIFY з тригера на `lots`; int-тест на двох реплік з реальними Postgres і Redis. Nest-гейтвей-обгортка — етап 14) |
-| 13 | Нотифікації | ⬜ |
+| 13 | Нотифікації | ✅ (`notifyOutbid` у транзакції ставки: in-app завжди, лист ≤ 1 за 15 хв на (user, lot); `NotificationService`: список/прочитано лише власні, нагадування за годину через CAS по `favorites.reminder_sent_at`, `drainEmails` — SKIP LOCKED з повтором при збої; цикли drain/нагадувань і SMTP-заглушка — з Nest-обв'язкою worker, етап 14) |
 | 14 | OpenAPI-клієнт | ⬜ |
 | 15 | Веб | ⬜ |
 | 16 | Звіти, звірка | ⬜ |
@@ -108,3 +108,4 @@
 | (етап 10) | `feat(media): presigned uploads, sharp processing without EXIF, private photo access` |
 | (етап 11) | `feat(search): trigger-fed outbox, meilisearch indexer, reindex swap, search service` |
 | (етап 12) | `feat(realtime): socket.io gateway, pg-notify bus, seq catch-up, private outbid; fix(search): per-lot advisory lock in indexer` |
+| (етап 13) | `feat(notifications): outbid notices with 15-min email limit, ending reminders, email outbox drain` |

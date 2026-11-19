@@ -84,3 +84,8 @@ export const rejectLotSchema = z.object({ reason: z.string().trim().min(3).max(1
 
 /** A moderator who takes a lot from the queue holds it this long before it returns to the queue. */
 export const REVIEW_LEASE_MINUTES = 15;
+
+/** At most one outbid email per user per lot in this window (in-app notices are not limited). */
+export const OUTBID_EMAIL_INTERVAL_MINUTES = 15;
+/** A favourite lot gets one reminder when it is this close to ending. */
+export const ENDING_REMINDER_MINUTES = 60;

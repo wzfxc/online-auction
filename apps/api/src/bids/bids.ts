@@ -10,6 +10,7 @@ import type { Db } from '../db/client.js';
 import { bidderMaxes, bids, lotEvents, lots, sales, users } from '../db/schema.js';
 import type { Tx } from '../ledger/ledger.js';
 import { holdDepositForMax, releaseDeposit } from '../ledger/wallet.js';
+import { notifyOutbid } from '../notifications/notifications.js';
 import type { Principal } from '../lots/lots.js';
 
 const HOUR_MS = 3_600_000;
@@ -93,6 +94,9 @@ export class BidService {
           // D2: the outbid bidder's deposit is released in the same transaction.
           await tx.delete(bidderMaxes).where(and(eq(bidderMaxes.lotId, lotId), eq(bidderMaxes.userId, res.outbidUserId)));
           await releaseDeposit(tx, res.outbidUserId, lotId, now);
+          await notifyOutbid(tx, now, {
+            userId: res.outbidUserId, lotId, lotTitle: lot.title, seq, currentPrice: res.price,
+          });
         }
         // lockBiddable guarantees endsAt is set; anti-sniping may only move it later.
         const endsAt = endsAtAfterBid(lot.endsAt!, now);
