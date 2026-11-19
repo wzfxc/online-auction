@@ -38,6 +38,12 @@ export function canTransition(from: LotStatus, to: LotStatus, actor: LotActor): 
 }
 
 export const MAX_PHOTOS = 10;
+export const PHOTO_MAX_BYTES = 10 * 1024 * 1024;
+export const PHOTO_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export type PhotoContentType = (typeof PHOTO_CONTENT_TYPES)[number];
+export const PHOTO_PREVIEW_WIDTH = 400;
+export const PHOTO_UPLOAD_TTL_SECONDS = 300;
+export const PHOTO_VIEW_TTL_SECONDS = 300;
 export const MIN_DURATION_DAYS = 1;
 export const MAX_DURATION_DAYS = 10;
 
