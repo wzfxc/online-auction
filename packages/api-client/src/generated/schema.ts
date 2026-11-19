@@ -534,6 +534,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/moderation/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lots waiting for review, oldest first */
+        get: operations["listReviewQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/moderation/lots/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take a specific lot from the queue (15 min lease) */
+        post: operations["claimLotById"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/moderation/lots/{id}/remove": {
         parameters: {
             query?: never;
@@ -3770,6 +3804,174 @@ export interface operations {
             };
             /** @description Not allowed (FORBIDDEN and role/ownership codes) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    listReviewQueue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        title: string;
+                        /** Format: uuid */
+                        categoryId: string;
+                        startPrice: number;
+                        submittedAt: string;
+                        claimed: boolean;
+                        claimedByMe: boolean;
+                        leaseUntil: string | null;
+                    }[];
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    claimLotById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        sellerId: string;
+                        title: string;
+                        description: string;
+                        /** Format: uuid */
+                        categoryId: string;
+                        /** Format: uuid */
+                        cityId: string;
+                        /** @enum {string} */
+                        condition: "new" | "like_new" | "good" | "fair" | "poor";
+                        startPrice: number;
+                        buyNowPrice: number | null;
+                        durationDays: number;
+                        /** @enum {string} */
+                        status: "draft" | "in_review" | "rejected" | "active" | "ended_unsold" | "awaiting_payment" | "paid" | "shipped" | "completed" | "removed";
+                        currentPrice: number;
+                        bidCount: number;
+                        /** Format: date-time */
+                        endsAt: string | null;
+                        reserveMet: boolean | null;
+                        rejectionReason: string | null;
+                    };
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description State conflict (business-rule codes) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

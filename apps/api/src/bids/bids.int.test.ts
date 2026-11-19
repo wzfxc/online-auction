@@ -102,6 +102,21 @@ describe('placing bids', () => {
     }
   });
 
+  it('one user, 10 parallel bids on different lots, funds for 3 deposits: exactly 3 pass, the rest INSUFFICIENT_FUNDS, balance never negative', async () => {
+    const lotIds = await Promise.all(Array.from({ length: 10 }, () => newLot()));
+    const user = await newUser('buyer', 15_000); // deposit for a 10 000 bid is 5 000 (the 50 ₴ minimum)
+    const results = await Promise.allSettled(lotIds.map((id) => svc.placeBid(user, id, { amount: 10_000 }, key())));
+    const ok = results.filter((r) => r.status === 'fulfilled');
+    const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
+    expect(ok).toHaveLength(3);
+    expect(failed).toHaveLength(7);
+    for (const f of failed) {
+      expect(f.reason).toMatchObject({ status: 422, code: 'INSUFFICIENT_FUNDS' });
+    }
+    expect(await db.transaction((tx) => getBalance(tx, user.id))).toEqual({ available: 0, held: 15_000 });
+    expect(await findUnbalancedTransactions(db as never)).toEqual([]);
+  });
+
   it('50 concurrent bids stay sequential: gap-free seq, one leader holding a deposit, ledger balanced', async () => {
     const lotId = await newLot();
     const bidders = await Promise.all(Array.from({ length: 50 }, () => newUser('buyer', 10_000_000)));

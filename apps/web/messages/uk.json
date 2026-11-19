@@ -297,7 +297,14 @@
     "photosCount": "Фото: {count}",
     "statusApproved": "Лот схвалено",
     "statusRejected": "Лот відхилено",
-    "statusRemoved": "Лот знято"
+    "statusRemoved": "Лот знято",
+    "queueTitle": "Черга на перевірку",
+    "queueRefresh": "Оновити",
+    "queueNone": "У черзі немає лотів.",
+    "takeLot": "Взяти",
+    "queueClaimed": "Зайнято іншим модератором",
+    "queueMine": "Ваша оренда до {time}",
+    "queueSubmitted": "Подано"
   },
   "finance": {
     "title": "Кабінет фінансиста",

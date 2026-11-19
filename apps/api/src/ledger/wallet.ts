@@ -1,9 +1,9 @@
-import { and, desc, eq, gt, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, sql } from 'drizzle-orm';
 import { calcDeposit } from '@auction/shared';
 import { Errors } from '../common/errors/app-error.js';
 import type { Db } from '../db/client.js';
 import { accounts, deposits, ledgerEntries, ledgerTransactions, lots, sales } from '../db/schema.js';
-import { balanceOf, post, type PostResult, type Tx, type UserAccountType } from './ledger.js';
+import { balanceOf, getAccountId, post, type PostResult, type Tx, type UserAccountType } from './ledger.js';
 
 export interface WalletBalance {
   available: number;
@@ -28,6 +28,20 @@ export interface WalletHistoryDto {
   payable: number;
   pendingPayout: number;
   items: WalletHistoryItemDto[];
+}
+
+/**
+ * Serialises balance changes of one user: locks the user's `user_available` and `user_hold` rows
+ * (in id order, the same order the ledger trigger updates them) until the transaction ends.
+ * Call it BEFORE reading the balance that a spend decision depends on; otherwise parallel
+ * transactions of one user (bids on different lots) all see the same balance and the DB CHECK fires.
+ */
+export async function lockWallet(tx: Tx, userId: string): Promise<void> {
+  await getAccountId(tx, { type: 'user_available', userId });
+  await getAccountId(tx, { type: 'user_hold', userId });
+  await tx.select({ id: accounts.id }).from(accounts)
+    .where(and(eq(accounts.userId, userId), inArray(accounts.type, ['user_available', 'user_hold'])))
+    .orderBy(asc(accounts.id)).for('update');
 }
 
 export async function getBalance(tx: Tx, userId: string): Promise<WalletBalance> {
@@ -115,6 +129,7 @@ export async function holdDepositForMax(tx: Tx, userId: string, lotId: string, m
   const delta = target - held;
   if (delta === 0) return 0;
 
+  await lockWallet(tx, userId);
   const { available } = await getBalance(tx, userId);
   if (available < delta) throw Errors.insufficientFunds({ required: delta, available });
 

@@ -1,8 +1,9 @@
 import { Catch, HttpException, Logger, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
-import { AppError, type ErrorBody } from '../common/errors/app-error.js';
+import { AppError, Errors, type ErrorBody } from '../common/errors/app-error.js';
 import {
-  PG_FOREIGN_KEY_VIOLATION, PG_INVALID_BYTE_SEQUENCE, PG_NUMERIC_VALUE_OUT_OF_RANGE, pgErrorCode,
+  PG_CHECK_VIOLATION, PG_FOREIGN_KEY_VIOLATION, PG_INVALID_BYTE_SEQUENCE, PG_NUMERIC_VALUE_OUT_OF_RANGE,
+  pgConstraint, pgErrorCode,
 } from '../common/errors/pg-errors.js';
 
 const CODE_BY_STATUS: Record<number, string> = {
@@ -40,6 +41,11 @@ export class ErrorFilter implements ExceptionFilter {
       return { status, body: { code: CODE_BY_STATUS[status] ?? 'BAD_REQUEST', message } };
     }
     const pgCode = pgErrorCode(e);
+    // Safety net: a spend that slipped past the explicit check hits the non-negative balance CHECK.
+    if (pgCode === PG_CHECK_VIOLATION && pgConstraint(e) === 'accounts_user_nonneg') {
+      const err = Errors.insufficientFunds();
+      return { status: err.status, body: err.toBody() };
+    }
     if (pgCode === PG_INVALID_BYTE_SEQUENCE) {
       return { status: 400, body: { code: 'VALIDATION_ERROR', message: 'Invalid characters in input' } };
     }

@@ -297,7 +297,14 @@
     "photosCount": "Photos: {count}",
     "statusApproved": "Approved",
     "statusRejected": "Rejected",
-    "statusRemoved": "Removed"
+    "statusRemoved": "Removed",
+    "queueTitle": "Review queue",
+    "queueRefresh": "Refresh",
+    "queueNone": "No lots in the queue.",
+    "takeLot": "Take",
+    "queueClaimed": "Held by another moderator",
+    "queueMine": "Your lease until {time}",
+    "queueSubmitted": "Submitted"
   },
   "finance": {
     "title": "Finance dashboard",

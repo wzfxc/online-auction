@@ -28,6 +28,21 @@ export class SearchIndexer {
     assertOk(await this.meili.index(uid).updateSettings(INDEX_SETTINGS).waitTask({ timeout: TASK_TIMEOUT_MS }));
   }
 
+  /**
+   * Self-healing: creates the index if missing and, when it holds no documents although public lots exist
+   * (fresh/wiped Meilisearch volume), rebuilds it with `reindexAll`. Cheap when the index is healthy
+   * (one stats call + one DB count only while it is empty), so the worker may run it periodically.
+   */
+  async ensureIndexed(): Promise<{ reindexed: boolean; documents: number }> {
+    await this.ensureIndex();
+    const { numberOfDocuments } = await this.meili.index(this.indexName).getStats();
+    if (numberOfDocuments > 0) return { reindexed: false, documents: numberOfDocuments };
+    const [row] = await this.db.select({ n: sql<number>`count(*)::int` }).from(lots)
+      .where(inArray(lots.status, [...SEARCHABLE_STATUSES]));
+    if ((row?.n ?? 0) === 0) return { reindexed: false, documents: 0 };
+    return { reindexed: true, documents: await this.reindexAll() };
+  }
+
   /** Processes one batch; returns the number of outbox rows handled (0 = queue empty). */
   async drain(): Promise<number> {
     const now = this.clock.now();

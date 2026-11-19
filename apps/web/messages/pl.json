@@ -297,7 +297,14 @@
     "photosCount": "Zdjęcia: {count}",
     "statusApproved": "Zatwierdzono",
     "statusRejected": "Odrzucono",
-    "statusRemoved": "Zdjęto"
+    "statusRemoved": "Zdjęto",
+    "queueTitle": "Kolejka do weryfikacji",
+    "queueRefresh": "Odśwież",
+    "queueNone": "Brak lotów w kolejce.",
+    "takeLot": "Weź",
+    "queueClaimed": "Zajęte przez innego moderatora",
+    "queueMine": "Twoja dzierżawa do {time}",
+    "queueSubmitted": "Zgłoszono"
   },
   "finance": {
     "title": "Panel finansisty",

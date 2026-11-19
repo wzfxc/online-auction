@@ -11,7 +11,7 @@ import {
   bidderMaxes, deposits, emailOutbox, lotEvents, lots, notifications, sales, users,
 } from '../db/schema.js';
 import { post, type Movement, type Tx } from '../ledger/ledger.js';
-import { getBalance } from '../ledger/wallet.js';
+import { getBalance, lockWallet } from '../ledger/wallet.js';
 import type { Principal } from '../lots/lots.js';
 
 const DAY_MS = 86_400_000;
@@ -93,6 +93,7 @@ export class SalesService {
         const fromAvailable = sale.price - fromHold;
 
         if (fromAvailable > 0) {
+          await lockWallet(tx, buyer.id);
           const { available } = await getBalance(tx, buyer.id);
           if (available < fromAvailable) {
             throw Errors.insufficientFunds({ required: fromAvailable, available });

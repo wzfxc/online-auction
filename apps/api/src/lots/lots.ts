@@ -139,17 +139,18 @@ export class LotService {
       await this.assertRefsExist(tx, merged.data.categoryId, merged.data.cityId);
 
       const now = this.clock.now();
-      const endsAtPatch =
-        lot.status === 'active' && p.data.durationDays !== undefined && lot.endsAt
-          ? { endsAt: new Date(Math.max(now.getTime(), lot.endsAt.getTime() + (p.data.durationDays - lot.durationDays) * DAY_MS)) }
-          : {};
       const patch = {
         ...p.data,
         ...(p.data.startPrice !== undefined ? { currentPrice: p.data.startPrice } : {}),
-        ...endsAtPatch,
       };
-      const [row] = await tx.update(lots).set({ ...patch, updatedAt: now }).where(eq(lots.id, lotId)).returning();
+      // Editing a published lot (no bids yet) sends it back to moderation; the end time is set again on approval.
+      const republish = lot.status === 'active'
+        ? { status: 'in_review' as const, endsAt: null, moderatorId: null, reviewLeaseUntil: null }
+        : {};
+      if (lot.status === 'active') this.assertTransition(lot.status, 'in_review', 'seller');
+      const [row] = await tx.update(lots).set({ ...patch, ...republish, updatedAt: now }).where(eq(lots.id, lotId)).returning();
       await this.log(tx, lotId, user.id, 'updated', { fields: Object.keys(p.data) });
+      if (lot.status === 'active') await this.log(tx, lotId, user.id, 'resubmitted_after_edit', { from: 'active' });
       return toOwnLotDto(row!);
     });
   }

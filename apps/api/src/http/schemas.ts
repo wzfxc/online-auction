@@ -43,6 +43,17 @@ export const lotSchema = z.object({
 });
 
 /** Owner-only view: the single schema that carries the reserve price. */
+export const reviewQueueItemSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  categoryId: z.string().uuid(),
+  startPrice: kopecks,
+  submittedAt: z.string(),
+  claimed: z.boolean(),
+  claimedByMe: z.boolean(),
+  leaseUntil: z.string().nullable(),
+});
+
 export const ownLotSchema = lotSchema.extend({ reservePrice: kopecks.nullable() });
 
 export const lotEventSchema = z.object({

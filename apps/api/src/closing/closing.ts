@@ -7,7 +7,8 @@ import type { Clock } from '../common/clock/clock.js';
 import type { Db } from '../db/client.js';
 import { deposits, lotEvents, lots, sales } from '../db/schema.js';
 import { post, type Tx } from '../ledger/ledger.js';
-import { getBalance, holdDepositForMax, releaseDeposit } from '../ledger/wallet.js';
+import { notifySecondChance, notifyWon } from '../notifications/notifications.js';
+import { getBalance, holdDepositForMax, lockWallet, releaseDeposit } from '../ledger/wallet.js';
 
 const HOUR_MS = 3_600_000;
 const SWEEP_BATCH = 100;
@@ -47,6 +48,10 @@ export class ClosingService {
         lotId, buyerId: leaderId, attempt: 1, price: lot.currentPrice, fee: calcFee(lot.currentPrice),
         payDueAt, createdAt: now,
       });
+      await notifyWon(tx, now, {
+        userId: leaderId, lotId, lotTitle: lot.title, price: lot.currentPrice, payDueAt,
+        windowHours: PAYMENT_WINDOW_HOURS,
+      });
       await this.setStatus(tx, lot, 'awaiting_payment', now, 'won', { winnerId: leaderId, price: lot.currentPrice });
       return 'awaiting_payment';
     });
@@ -75,10 +80,14 @@ export class ClosingService {
         await this.setStatus(tx, lot, 'ended_unsold', now, 'no_more_bidders');
         return 'ended_unsold';
       }
+      const offerDueAt = new Date(now.getTime() + SECOND_CHANCE_WINDOW_HOURS * HOUR_MS);
       await tx.insert(sales).values({
         lotId: lot.id, buyerId: next.userId, attempt: sale.attempt + 1, price: next.maxAmount,
-        fee: calcFee(next.maxAmount), payDueAt: new Date(now.getTime() + SECOND_CHANCE_WINDOW_HOURS * HOUR_MS),
-        createdAt: now,
+        fee: calcFee(next.maxAmount), payDueAt: offerDueAt, createdAt: now,
+      });
+      await notifySecondChance(tx, now, {
+        userId: next.userId, lotId: lot.id, lotTitle: lot.title, price: next.maxAmount, payDueAt: offerDueAt,
+        windowHours: SECOND_CHANCE_WINDOW_HOURS,
       });
       const seq = lot.lastSeq + 1;
       await tx.update(lots).set({ currentPrice: next.maxAmount, leaderId: next.userId, lastSeq: seq, updatedAt: now })
@@ -152,7 +161,9 @@ export class ClosingService {
 
   /**
    * Next bidder to offer the lot to: highest maximum first (tie-break by earliest bid reaching that max),
-   * skipping anyone who already had an attempt. A bidder who cannot fund the 10% deposit is skipped too.
+   * skipping anyone who already had an attempt. The lot is never offered below its reserve price (a
+   * maximum under the reserve cannot produce a valid sale), and a bidder who cannot fund the 10% deposit
+   * is skipped too. The chosen bidder's deposit is held here and the bidder is notified by the caller.
    */
   private async nextOffer(tx: Tx, lot: LotRow): Promise<SecondChanceCandidate | null> {
     const rows = await tx.execute(sql`
@@ -170,6 +181,8 @@ export class ClosingService {
       return { userId: x.user_id, maxAmount: Number(x.max_amount), reachedSeq: Number(x.reached_seq) };
     });
     for (const c of rankCandidates(list)) {
+      if (lot.reservePrice !== null && c.maxAmount < lot.reservePrice) continue;
+      await lockWallet(tx, c.userId);
       const { available } = await getBalance(tx, c.userId);
       const [dep] = await tx.select({ amount: deposits.amount }).from(deposits)
         .where(and(eq(deposits.lotId, lot.id), eq(deposits.userId, c.userId)));

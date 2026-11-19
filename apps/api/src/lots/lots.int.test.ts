@@ -82,7 +82,7 @@ describe('editing rules', () => {
     await expect(svc.update(seller, lot.id, { startPrice: 95_000 })).rejects.toMatchObject({ status: 400 });
   });
 
-  it('active lot with 0 bids can edit fields; once a bid exists, only description can be appended', async () => {
+  it('active lot with 0 bids can edit fields (goes back to review); once a bid exists, only description can be appended', async () => {
     const lot = await svc.create(seller, input());
     await svc.submit(seller, lot.id);
     await svc.approve(moderator, lot.id);
@@ -90,6 +90,15 @@ describe('editing rules', () => {
     const editedActive = await svc.update(seller, lot.id, { title: 'Updated Before First Bid', startPrice: 20_000 });
     expect(editedActive.title).toBe('Updated Before First Bid');
     expect(editedActive.currentPrice).toBe(20_000);
+    // The edit returns the lot to moderation: not public, no end time until it is approved again.
+    expect(editedActive.status).toBe('in_review');
+    expect(editedActive.endsAt).toBeNull();
+    const events = await svc.history(seller, lot.id);
+    expect(events.map((e) => e.type)).toContain('resubmitted_after_edit');
+    await expect(svc.get(null, lot.id)).rejects.toMatchObject({ status: 404 });
+    const reapproved = await svc.approve(moderator, lot.id);
+    expect(reapproved.status).toBe('active');
+    expect(reapproved.title).toBe('Updated Before First Bid');
 
     // Simulate first bid placed:
     await db.update(lots).set({ bidCount: 1, currentPrice: 20_000 }).where(sql`id = ${lot.id}`);

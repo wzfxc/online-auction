@@ -152,3 +152,54 @@ describe('removing a published lot', () => {
     await expect(mod.removeLot(m, active, { reason: 'because' })).rejects.toMatchObject({ status: 409 });
   });
 });
+
+describe('review queue listing and claim by id', () => {
+  it('lists in_review lots oldest first with live lease state, and only for moderators', async () => {
+    await clearQueue();
+    const first = await newLot({ title: 'First', createdAt: new Date('2029-12-31T00:00:00Z') });
+    const second = await newLot({ title: 'Second', createdAt: new Date('2029-12-31T01:00:00Z'), reservePrice: 99_000 });
+    await newLot({ status: 'active' }); // not in the queue
+    const [m1, m2] = [await newUser('moderator'), await newUser('moderator')];
+
+    const q1 = await mod.listQueue(m1);
+    expect(q1.map((x) => x.id)).toEqual([first, second]);
+    expect(q1.every((x) => !x.claimed && !x.claimedByMe)).toBe(true);
+    expect(JSON.stringify(q1)).not.toContain('99000'); // reserve price never in the queue payload
+
+    await mod.claimById(m1, second);
+    const mine = await mod.listQueue(m1);
+    expect(mine.find((x) => x.id === second)).toMatchObject({ claimed: true, claimedByMe: true });
+    expect((await mod.listQueue(m2)).find((x) => x.id === second)).toMatchObject({ claimed: true, claimedByMe: false });
+
+    await expect(mod.listQueue(seller)).rejects.toMatchObject({ status: 403 });
+    await expect(mod.claimById(seller, first)).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('claimById: foreign live lease → 409 LOT_CLAIMED, expired lease can be taken, non-queued lot → 404', async () => {
+    await clearQueue();
+    const id = await newLot();
+    const [m1, m2] = [await newUser('moderator'), await newUser('moderator')];
+    await mod.claimById(m1, id);
+    await expect(mod.claimById(m2, id)).rejects.toMatchObject({ status: 409, code: 'LOT_CLAIMED' });
+    await expect(mod.claimNext(m2)).resolves.toBeNull(); // claimNext also skips the leased lot
+    await expect(mod.claimById(m1, id)).resolves.toMatchObject({ id }); // own lease renews
+
+    clock.advance((REVIEW_LEASE_MINUTES + 1) * 60_000);
+    const taken = await mod.claimById(m2, id);
+    expect(taken.id).toBe(id);
+    const [row] = await db.select().from(lots).where(eq(lots.id, id));
+    expect(row!.moderatorId).toBe(m2.id);
+
+    const active = await newLot({ status: 'active' });
+    await expect(mod.claimById(m1, active)).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('concurrent claimById by two moderators: exactly one wins', async () => {
+    await clearQueue();
+    const id = await newLot();
+    const [m1, m2] = [await newUser('moderator'), await newUser('moderator')];
+    const r = await Promise.allSettled([mod.claimById(m1, id), mod.claimById(m2, id)]);
+    expect(r.filter((x) => x.status === 'fulfilled')).toHaveLength(1);
+    expect((r.find((x) => x.status === 'rejected') as PromiseRejectedResult).reason).toMatchObject({ code: 'LOT_CLAIMED' });
+  });
+});

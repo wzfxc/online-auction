@@ -43,7 +43,8 @@ pnpm test:int                                 # інтеграційні тес�
 pnpm e2e                                      # Playwright e2e (проти запущеного docker compose)
 node scripts/acceptance/verify-compose.mjs    # жива перевірка Meilisearch outage, FLUSHALL + 3 worker, звірки
 pnpm --filter @auction/api seed               # ручний запуск сиду
-pnpm --filter @auction/api exec tsx -e "..."  # або SearchIndexer.reindexAll() для повної переіндексації
+pnpm reindex                                  # повна переіндексація пошуку з Postgres (swap без простою)
+pnpm reindex --if-empty                       # те саме, лише якщо індекс Meilisearch порожній
 ```
 
 ---
@@ -121,8 +122,8 @@ pnpm --filter @auction/api exec tsx -e "..."  # або SearchIndexer.reindexAll(
 ## 5. Розподіл даних і відновлення після збоїв
 
 - **PostgreSQL 16 (єдине джерело правди):** користувачі, лоти, ставки, `bidder_maxes`, подвійний ledger, продажі, модерація, медіа-метадані, сесії платіжної заглушки, `search_outbox`, `email_outbox`, `notifications`, `idempotency_keys`, `job_effects`.
-- **Redis 7:** лише адаптер Socket.IO для міжреплікових команд (наприклад, `disconnectUser`). Усі фонові процеси (`apps/api/src/worker/main.ts`) працюють як **БД-свіпери** з `FOR UPDATE SKIP LOCKED` і compare-and-set. Після `redis-cli FLUSHALL` і перезапуску/масштабування `worker` жодна задача (закриття лотів, 48/24 год прострочення, автопідтвердження за 7 днів, нагадування за 1 год, оренди модерації, фото, листи, звірка платежів) не губиться і не виконується двічі.
-- **Meilisearch:** індекс пошуку й фасетів. Тригер Postgres `lots_search_outbox` у тій самій транзакції запису додає `lot_id` у `search_outbox`. Якщо Meilisearch падає, лоти та ставки продовжують працювати без збоїв, `/search` повертає `503 SEARCH_UNAVAILABLE`, а після повернення Meilisearch `SearchIndexer.drain()` автоматично доганяє накопичений outbox. Повна переіндексація без простою (`swapIndexes`) — через `SearchIndexer.reindexAll()`.
+- **Redis 7:** лише адаптер Socket.IO для міжреплікових команд (наприклад, `disconnectUser`). Усі фонові процеси (`apps/worker`: NestJS + BullMQ, `apps/worker/src/main.ts`) працюють як ідемпотентні **БД-свіпери** з `FOR UPDATE SKIP LOCKED` і compare-and-set. Після `redis-cli FLUSHALL` і перезапуску/масштабування `worker` жодна задача (закриття лотів, 48/24 год прострочення, автопідтвердження за 7 днів, нагадування за 1 год, оренди модерації, фото, листи, звірка платежів) не губиться і не виконується двічі.
+- **Meilisearch:** індекс пошуку й фасетів. Тригер Postgres `lots_search_outbox` у тій самій транзакції запису додає `lot_id` у `search_outbox`. Якщо Meilisearch падає, лоти та ставки продовжують працювати без збоїв, `/search` повертає `503 SEARCH_UNAVAILABLE`, а після повернення Meilisearch `SearchIndexer.drain()` автоматично доганяє накопичений outbox. Повна переіндексація без простою (`swapIndexes`) — `pnpm reindex` (`SearchIndexer.reindexAll()`). Worker сам перевіряє індекс на старті й кожні 30 с: якщо в Meilisearch 0 документів, а публічні лоти в БД є, виконується `reindexAll()` автоматично (`SearchIndexer.ensureIndexed()`).
 - **MinIO (S3):** приватний бакет `lots`. Завантаження напряму з браузера за presigned POST із політикою на конкретний `contentType` і `sizeBytes <= 10 МБ`. Воркер перекодовує зображення через `sharp` (видаляє EXIF/GPS) та генерує WebP-прев'ю `400 px`. Несхвалені лоти доступні лише власнику та модератору, а посилання на завантаження завжди короткоживучі presigned GET.
 
 ---
@@ -160,5 +161,5 @@ pnpm --filter @auction/api exec tsx -e "..."  # або SearchIndexer.reindexAll(
 | D15 | Образ MinIO | Використано `chainguard/minio:latest` з тим самим S3 API |
 | D16 | Порт Postgres | Хост-порт у compose — `5433`, у локальних URL — `127.0.0.1` |
 | D17–D24 | Схема, DTO, Nest | Deferred zero-sum ledger, явні DTO-мапери без `reservePrice`, глобальний guard + єдиний формат помилок `{code, message, details}` |
-| D25 | Worker і платіжна заглушка | Свіпери БД у `worker`; листи через `SmtpEmailSender` у Mailpit; сесії заглушки у Postgres `payment_stub_sessions` (спільні для `api1`, `api2`, `worker`) |
+| D25 | Worker і платіжна заглушка | `worker` — NestJS + BullMQ (repeatable jobs; ідемпотентні свіпери БД, watchdog лікує `FLUSHALL`, graceful shutdown); листи через `SmtpEmailSender` у Mailpit; сесії заглушки у Postgres `payment_stub_sessions` (спільні для `api1`, `api2`, `worker`) |
 | D26 | Сид | Історія сиду без записів ledger (звірка = 0); демо-покупці `buyer1..10` мають реальні поповнення в ledger |

@@ -25,6 +25,8 @@ export const LOT_TRANSITIONS: readonly LotTransition[] = [
   { from: 'in_review', to: 'rejected', actor: 'moderator' },
   { from: 'rejected', to: 'draft', actor: 'seller' },
   { from: 'ended_unsold', to: 'draft', actor: 'seller' },
+  // A published lot with no bids that the seller edits goes back to moderation.
+  { from: 'active', to: 'in_review', actor: 'seller' },
   { from: 'active', to: 'removed', actor: 'moderator' },
   { from: 'active', to: 'ended_unsold', actor: 'system' },
   { from: 'active', to: 'awaiting_payment', actor: 'system' },

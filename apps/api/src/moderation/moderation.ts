@@ -10,6 +10,17 @@ import { toLotDto } from '../lots/lots.js';
 
 const MINUTE_MS = 60_000;
 
+export interface ReviewQueueItemDto {
+  id: string;
+  title: string;
+  categoryId: string;
+  startPrice: number;
+  submittedAt: string;
+  claimed: boolean;
+  claimedByMe: boolean;
+  leaseUntil: string | null;
+}
+
 /**
  * Review queue with leases. Claiming is `FOR UPDATE SKIP LOCKED`, so two moderators asking at once
  * never get the same lot; an unfinished lease expires by the server clock and the lot is claimable again.
@@ -42,6 +53,53 @@ export class ModerationService {
       await tx.insert(lotEvents).values({
         lotId: free.id, actorId: moderator.id, type: 'review_claimed', createdAt: now,
         payload: { leaseUntil: leaseUntil.toISOString() },
+      });
+      return toLotDto(row!, moderator);
+    });
+  }
+
+  /**
+   * The review queue, oldest first, so a moderator can choose a lot. `claimedByMe` / `claimed` reflect live leases
+   * only (an expired lease counts as free). Reserve prices are not part of the item.
+   */
+  async listQueue(moderator: Principal, limit = 50): Promise<ReviewQueueItemDto[]> {
+    this.assertModerator(moderator);
+    const now = this.clock.now();
+    const rows = await this.db.select({
+      id: lots.id, title: lots.title, categoryId: lots.categoryId, startPrice: lots.startPrice,
+      createdAt: lots.createdAt, updatedAt: lots.updatedAt, moderatorId: lots.moderatorId,
+      leaseUntil: lots.reviewLeaseUntil,
+    }).from(lots).where(eq(lots.status, 'in_review')).orderBy(asc(lots.createdAt), asc(lots.id))
+      .limit(Math.min(Math.max(limit, 1), 100));
+    return rows.map((r) => {
+      const live = r.leaseUntil !== null && r.leaseUntil.getTime() > now.getTime();
+      return {
+        id: r.id, title: r.title, categoryId: r.categoryId, startPrice: r.startPrice,
+        submittedAt: r.updatedAt.toISOString(),
+        claimed: live, claimedByMe: live && r.moderatorId === moderator.id,
+        leaseUntil: live ? r.leaseUntil!.toISOString() : null,
+      };
+    });
+  }
+
+  /** Takes one specific lot from the queue (by id). Same lease rules as `claimNext`; a foreign live lease → 409. */
+  async claimById(moderator: Principal, lotId: string): Promise<LotDto> {
+    this.assertModerator(moderator);
+    const now = this.clock.now();
+    return this.db.transaction(async (tx) => {
+      const [lot] = await tx.select().from(lots).where(eq(lots.id, lotId)).for('update');
+      if (!lot || lot.status !== 'in_review') throw Errors.notFound('Lot in review');
+      const live = lot.reviewLeaseUntil !== null && lot.reviewLeaseUntil.getTime() > now.getTime();
+      if (live && lot.moderatorId !== moderator.id) {
+        throw Errors.conflict('LOT_CLAIMED', 'Lot is being reviewed by another moderator');
+      }
+      const leaseUntil = new Date(now.getTime() + REVIEW_LEASE_MINUTES * MINUTE_MS);
+      const [row] = await tx.update(lots)
+        .set({ moderatorId: moderator.id, reviewLeaseUntil: leaseUntil, updatedAt: now })
+        .where(eq(lots.id, lotId)).returning();
+      await tx.insert(lotEvents).values({
+        lotId, actorId: moderator.id, type: 'review_claimed', createdAt: now,
+        payload: { leaseUntil: leaseUntil.toISOString(), byId: true },
       });
       return toLotDto(row!, moderator);
     });

@@ -6917,6 +6917,378 @@
         ]
       }
     },
+    "/moderation/queue": {
+      "get": {
+        "operationId": "listReviewQueue",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "categoryId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "startPrice": {
+                        "type": "integer"
+                      },
+                      "submittedAt": {
+                        "type": "string"
+                      },
+                      "claimed": {
+                        "type": "boolean"
+                      },
+                      "claimedByMe": {
+                        "type": "boolean"
+                      },
+                      "leaseUntil": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title",
+                      "categoryId",
+                      "startPrice",
+                      "submittedAt",
+                      "claimed",
+                      "claimedByMe",
+                      "leaseUntil"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Lots waiting for review, oldest first",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
+    "/moderation/lots/{id}/claim": {
+      "post": {
+        "operationId": "claimLotById",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "sellerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "categoryId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "cityId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "condition": {
+                      "type": "string",
+                      "enum": [
+                        "new",
+                        "like_new",
+                        "good",
+                        "fair",
+                        "poor"
+                      ]
+                    },
+                    "startPrice": {
+                      "type": "integer"
+                    },
+                    "buyNowPrice": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "durationDays": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "draft",
+                        "in_review",
+                        "rejected",
+                        "active",
+                        "ended_unsold",
+                        "awaiting_payment",
+                        "paid",
+                        "shipped",
+                        "completed",
+                        "removed"
+                      ]
+                    },
+                    "currentPrice": {
+                      "type": "integer"
+                    },
+                    "bidCount": {
+                      "type": "integer"
+                    },
+                    "endsAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "reserveMet": {
+                      "type": "boolean",
+                      "nullable": true
+                    },
+                    "rejectionReason": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "sellerId",
+                    "title",
+                    "description",
+                    "categoryId",
+                    "cityId",
+                    "condition",
+                    "startPrice",
+                    "buyNowPrice",
+                    "durationDays",
+                    "status",
+                    "currentPrice",
+                    "bidCount",
+                    "endsAt",
+                    "reserveMet",
+                    "rejectionReason"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "State conflict (business-rule codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Take a specific lot from the queue (15 min lease)",
+        "tags": [
+          "moderation"
+        ]
+      }
+    },
     "/moderation/lots/{id}/remove": {
       "post": {
         "operationId": "removeLot",

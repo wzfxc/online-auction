@@ -154,3 +154,34 @@ describe('full reindex', () => {
     expect((await search({ pageSize: 100, status: 'active' })).total).toBe(expected);
   });
 });
+
+describe('self-healing index (ensureIndexed)', () => {
+  it('rebuilds a wiped/empty index from Postgres, leaves a healthy one alone, and does nothing without lots', async () => {
+    await newLot({ title: 'Recoverable one' });
+    await newLot({ title: 'Recoverable two' });
+    await drainAll();
+    expect((await search({ q: 'Recoverable' })).total).toBe(2);
+
+    // Healthy index: no rebuild.
+    expect(await indexer.ensureIndexed()).toMatchObject({ reindexed: false });
+
+    // Simulate a lost Meilisearch volume: index gone, outbox already processed.
+    await meili.deleteIndexIfExists(INDEX);
+    expect(await pending()).toBe(0);
+    const healed = await indexer.ensureIndexed();
+    expect(healed.reindexed).toBe(true);
+    expect(healed.documents).toBeGreaterThanOrEqual(2);
+    expect((await search({ q: 'Recoverable' })).total).toBe(2);
+
+    // Index exists but is empty (documents cleared): also rebuilt.
+    await meili.index(INDEX).deleteAllDocuments().waitTask();
+    expect((await search({ q: 'Recoverable' })).total).toBe(0);
+    expect((await indexer.ensureIndexed()).reindexed).toBe(true);
+    expect((await search({ q: 'Recoverable' })).total).toBe(2);
+  });
+
+  it('propagates Meilisearch outages so the worker job retries', async () => {
+    const dead = new SearchIndexer(db, clock, deadMeili, INDEX);
+    await expect(dead.ensureIndexed()).rejects.toBeDefined();
+  });
+});

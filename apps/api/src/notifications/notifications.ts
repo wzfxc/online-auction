@@ -57,6 +57,49 @@ export async function notifyOutbid(tx: Tx, now: Date, n: OutbidNotice): Promise<
   }).onConflictDoNothing();
 }
 
+export interface SaleNotice {
+  userId: string;
+  lotId: string;
+  lotTitle: string;
+  saleId?: string;
+  price: number;
+  payDueAt: Date;
+  windowHours: number;
+}
+
+async function notifyOnce(
+  tx: Tx, now: Date, n: SaleNotice, type: 'won' | 'second_chance', subject: string, body: string,
+): Promise<void> {
+  const dedupeKey = `${type}:${n.lotId}:${n.userId}:${n.payDueAt.getTime()}`;
+  await tx.insert(notifications).values({
+    userId: n.userId, type, createdAt: now, dedupeKey,
+    payload: {
+      lotId: n.lotId, lotTitle: n.lotTitle, price: n.price, payDueAt: n.payDueAt.toISOString(),
+      windowHours: n.windowHours,
+    },
+  }).onConflictDoNothing();
+  await tx.insert(emailOutbox).values({
+    userId: n.userId, lotId: n.lotId, kind: type, createdAt: now, subject, body, dedupeKey,
+  }).onConflictDoNothing();
+}
+
+/** Winner notice written in the closing transaction: in-app always, e-mail once (dedupe key). */
+export function notifyWon(tx: Tx, now: Date, n: SaleNotice): Promise<void> {
+  return notifyOnce(tx, now, n, 'won',
+    `Ви виграли лот «${n.lotTitle}»`,
+    `Вітаємо! Ви виграли лот «${n.lotTitle}» за ${(n.price / 100).toFixed(2)} ₴. `
+    + `Оплатіть його з гаманця протягом ${n.windowHours} год (до ${n.payDueAt.toISOString()}); залог буде зараховано в оплату.`);
+}
+
+/** Second-chance offer: the previous winner did not pay; this bidder may buy at their own maximum. */
+export function notifySecondChance(tx: Tx, now: Date, n: SaleNotice): Promise<void> {
+  return notifyOnce(tx, now, n, 'second_chance',
+    `Другий шанс: лот «${n.lotTitle}»`,
+    `Переможець не оплатив лот «${n.lotTitle}». Вам пропонується купити його за вашою максимальною ставкою `
+    + `${(n.price / 100).toFixed(2)} ₴. Оплатіть протягом ${n.windowHours} год (до ${n.payDueAt.toISOString()}). `
+    + `Для пропозиції утримано залог 10 % (мін. 50 ₴); він буде зараховано в оплату або повернено, якщо пропозицію зніме продавець/модератор.`);
+}
+
 export class NotificationService {
   constructor(private readonly db: Db, private readonly clock: Clock, private readonly sender: EmailSender) {}
 

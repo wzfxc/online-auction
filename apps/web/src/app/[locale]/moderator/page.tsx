@@ -1,13 +1,13 @@
 'use client';
 
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { ErrorBanner } from '@/components/ErrorBanner';
 import { Link } from '@/i18n/navigation';
 import type { AppLocale } from '@/i18n/routing';
 import { unwrap, type LotDto } from '@/lib/api';
-import { formatMoney } from '@/lib/format';
+import { formatDateTime, formatMoney } from '@/lib/format';
 import { useApp } from '@/lib/providers';
 
 export default function ModeratorDashboardPage() {
@@ -24,6 +24,24 @@ export default function ModeratorDashboardPage() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const canAccess = Boolean(token && user?.role === 'moderator');
+  const queryClient = useQueryClient();
+
+  const queueQuery = useQuery({
+    queryKey: ['mod-queue', token],
+    enabled: canAccess,
+    refetchInterval: 15_000,
+    queryFn: async () => unwrap(await client.GET('/moderation/queue')),
+  });
+
+  const takeMutation = useMutation({
+    mutationFn: async (lotId: string) =>
+      unwrap(await client.POST('/moderation/lots/{id}/claim', { params: { path: { id: lotId } } })),
+    onSuccess: (lot) => {
+      setClaimedLot(lot);
+      setStatusMessage(null);
+    },
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: ['mod-queue'] }),
+  });
 
   const claimMutation = useMutation({
     mutationFn: async () => unwrap(await client.POST('/moderation/claim')),
@@ -31,6 +49,7 @@ export default function ModeratorDashboardPage() {
       setClaimedLot(lot);
       setStatusMessage(null);
     },
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: ['mod-queue'] }),
   });
 
   const approveMutation = useMutation({
@@ -91,13 +110,55 @@ export default function ModeratorDashboardPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-slate-900">{t('title')}</h1>
-      <ErrorBanner error={claimMutation.error ?? approveMutation.error ?? rejectMutation.error ?? removeMutation.error} />
+      <ErrorBanner error={claimMutation.error ?? takeMutation.error ?? approveMutation.error ?? rejectMutation.error ?? removeMutation.error} />
 
       {statusMessage && (
         <div role="status" className="rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
           {statusMessage}
         </div>
       )}
+
+      <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-6 shadow-sm" data-testid="mod-queue">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-slate-900">{t('queueTitle')}</h2>
+          <button
+            type="button"
+            onClick={() => void queueQuery.refetch()}
+            className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            {t('queueRefresh')}
+          </button>
+        </div>
+        {queueQuery.data?.length === 0 && <p className="text-sm text-slate-500">{t('queueNone')}</p>}
+        <ul className="divide-y divide-slate-100">
+          {(queueQuery.data ?? []).map((item) => (
+            <li key={item.id} data-testid="mod-queue-item" className="flex flex-wrap items-center justify-between gap-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-900">{item.title}</p>
+                <p className="text-xs text-slate-500">
+                  {t('queueSubmitted')}: {formatDateTime(item.submittedAt, locale)} · {formatMoney(item.startPrice, locale)}
+                </p>
+                {item.claimed && (
+                  <p className="text-xs text-amber-700">
+                    {item.claimedByMe && item.leaseUntil
+                      ? t('queueMine', { time: formatDateTime(item.leaseUntil, locale) })
+                      : t('queueClaimed')}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                data-testid="mod-take-btn"
+                disabled={takeMutation.isPending || (item.claimed && !item.claimedByMe)}
+                onClick={() => takeMutation.mutate(item.id)}
+                className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+              >
+                {t('takeLot')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">

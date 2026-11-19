@@ -7,11 +7,20 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
-    "start": "tsx ../api/src/worker/main.ts"
+    "test:int": "vitest run -c vitest.int.config.ts",
+    "start": "tsx src/main.ts"
   },
   "dependencies": {
-    "@auction/shared": "workspace:*",
     "@auction/api": "workspace:*",
+    "@auction/shared": "workspace:*",
+    "@nestjs/common": "^12.5.1",
+    "@nestjs/core": "^12.5.1",
+    "bullmq": "^6.7.8",
+    "drizzle-orm": "^0.45.4",
+    "ioredis": "^6.0.0",
+    "meilisearch": "^0.63.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
     "tsx": "^4.23.15"
   }
 }

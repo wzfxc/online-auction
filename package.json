@@ -14,6 +14,7 @@
     "verify": "pnpm typecheck && pnpm lint && pnpm gen:check && pnpm test",
     "gen:openapi": "pnpm --filter @auction/api gen:openapi",
     "gen:client": "pnpm --filter @auction/api-client gen",
+    "reindex": "pnpm --filter @auction/api reindex",
     "gen:check": "pnpm gen:openapi && pnpm gen:client && git diff --exit-code -- packages/api-client"
   },
   "devDependencies": {

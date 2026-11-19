@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { FakeClock } from '../common/clock/clock.js';
 import { createDb, runMigrations } from '../db/client.js';
-import { categories, cities, lotEvents, lots, sales, users } from '../db/schema.js';
+import { categories, cities, emailOutbox, lotEvents, lots, notifications, sales, users } from '../db/schema.js';
 import { BidService } from '../bids/bids.js';
 import { balanceOf, findUnbalancedTransactions } from '../ledger/ledger.js';
 import { getBalance, topUp } from '../ledger/wallet.js';
@@ -218,5 +218,61 @@ describe('unpaid sales → second chance', () => {
     expect(await closing.defaultSale(first!.id)).toBe('offered_next');
     const all = await salesOf(lotId);
     expect(all[1]!.buyerId).toBe(b.id);
+  });
+
+  it('never offers the lot below its reserve: runners-up under the reserve are skipped and their deposits stay released', async () => {
+    const lotId = await newLot({ startPrice: 50_000, currentPrice: 50_000, reservePrice: 96_000 });
+    const a = await newUser('buyer', 1_000_000);
+    const b = await newUser('buyer', 1_000_000);
+    const c = await newUser('buyer', 1_000_000);
+    clock.set('2030-01-01T09:00:00.000Z');
+    await bidsSvc.placeBid(c, lotId, { amount: 50_000, maxAmount: 50_000 }, key());
+    await bidsSvc.placeBid(b, lotId, { amount: 51_000, maxAmount: 95_000 }, key());
+    await bidsSvc.placeBid(a, lotId, { amount: 100_000, maxAmount: 100_000 }, key());
+    clock.set('2030-01-01T12:00:01.000Z');
+    expect(await closing.closeLot(lotId)).toBe('awaiting_payment'); // price 96 000 meets the reserve
+    // B (95 000) and C (50 000) both lost: their deposits were released, nothing is held silently.
+    expect(await balances(b.id)).toEqual({ available: 1_000_000, held: 0 });
+    expect(await balances(c.id)).toEqual({ available: 1_000_000, held: 0 });
+    const [first] = await salesOf(lotId);
+
+    clock.set('2030-01-03T12:00:02.000Z');
+    expect(await closing.defaultSale(first!.id)).toBe('ended_unsold');
+    expect((await salesOf(lotId)).map((x) => x.buyerId)).toEqual([a.id]);
+    expect((await getLot(lotId)).status).toBe('ended_unsold');
+    // Defaulter's deposit goes to the seller (rule); the losers keep every kopeck and are not offered anything.
+    expect(await balances(a.id)).toEqual({ available: 1_000_000 - 10_000, held: 0 });
+    expect(await balances(b.id)).toEqual({ available: 1_000_000, held: 0 });
+    expect(await balances(c.id)).toEqual({ available: 1_000_000, held: 0 });
+    const offers = await db.select().from(notifications).where(eq(notifications.type, 'second_chance'));
+    expect(offers.filter((n) => (n.payload as { lotId: string }).lotId === lotId)).toEqual([]);
+    expect(await db.transaction((tx) => findUnbalancedTransactions(tx))).toEqual([]);
+  });
+
+  it('notifies the winner (48 h) and the second-chance bidder (24 h) in-app and by e-mail, once each', async () => {
+    const lotId = await newLot({ startPrice: 100_000, currentPrice: 100_000 });
+    const a = await newUser('buyer', 1_000_000);
+    const b = await newUser('buyer', 1_000_000);
+    clock.set('2030-01-01T09:00:00.000Z');
+    await bidsSvc.placeBid(b, lotId, { amount: 100_000, maxAmount: 150_000 }, key());
+    await bidsSvc.placeBid(a, lotId, { amount: 155_000, maxAmount: 200_000 }, key());
+    clock.set('2030-01-01T12:00:01.000Z');
+    await closing.closeLot(lotId);
+    await closing.closeLot(lotId);
+    const won = await db.select().from(notifications).where(eq(notifications.userId, a.id));
+    expect(won.filter((n) => n.type === 'won')).toHaveLength(1);
+    expect(won.find((n) => n.type === 'won')!.payload).toMatchObject({ lotId, windowHours: 48, price: 155_000 });
+    const [first] = await salesOf(lotId);
+
+    clock.set('2030-01-03T12:00:02.000Z');
+    await closing.defaultSale(first!.id);
+    await closing.defaultSale(first!.id);
+    const offer = (await db.select().from(notifications).where(eq(notifications.userId, b.id))).filter((n) => n.type === 'second_chance');
+    expect(offer).toHaveLength(1);
+    expect(offer[0]!.payload).toMatchObject({ lotId, windowHours: 24, price: 150_000, payDueAt: '2030-01-04T12:00:02.000Z' });
+    const mails = await db.select().from(emailOutbox).where(eq(emailOutbox.lotId, lotId));
+    expect(mails.filter((m) => m.userId === a.id && m.kind === 'won')).toHaveLength(1);
+    expect(mails.filter((m) => m.userId === b.id && m.kind === 'second_chance')).toHaveLength(1);
+    expect(JSON.stringify(mails)).not.toContain('reserve');
   });
 });

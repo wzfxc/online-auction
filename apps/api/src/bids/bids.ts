@@ -10,7 +10,7 @@ import type { Db } from '../db/client.js';
 import { bidderMaxes, bids, lotEvents, lots, sales, users } from '../db/schema.js';
 import type { Tx } from '../ledger/ledger.js';
 import { holdDepositForMax, releaseDeposit } from '../ledger/wallet.js';
-import { notifyOutbid } from '../notifications/notifications.js';
+import { notifyOutbid, notifyWon } from '../notifications/notifications.js';
 import type { Principal } from '../lots/lots.js';
 
 const HOUR_MS = 3_600_000;
@@ -146,6 +146,9 @@ export class BidService {
         const [sale] = await tx.insert(sales).values({
           lotId, buyerId: user.id, attempt: 1, price, fee, payDueAt, createdAt: now,
         }).returning({ id: sales.id });
+        await notifyWon(tx, now, {
+          userId: user.id, lotId, lotTitle: lot.title, price, payDueAt, windowHours: PAYMENT_WINDOW_HOURS,
+        });
         await tx.update(lots).set({
           status: 'awaiting_payment', currentPrice: price, bidCount: 1, leaderId: user.id,
           lastSeq: seq, updatedAt: now,

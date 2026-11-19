@@ -4,6 +4,26 @@ import pg from 'pg';
 const API_URL = process.env.E2E_API_URL ?? 'http://127.0.0.1:8080';
 const DB_URL = process.env.E2E_DATABASE_URL ?? 'postgres://auction:auction_dev_password@127.0.0.1:5433/auction';
 
+/**
+ * The API rate-limits auth calls (15/min per IP). All register/login calls of the suite go through this pacer, which
+ * keeps at most 12 in any sliding minute, so the suite stays under the server's fixed window without weakening it.
+ */
+const authCalls: number[] = [];
+async function paceAuth(): Promise<void> {
+  const windowMs = 60_000;
+  for (;;) {
+    const now = Date.now();
+    while (authCalls.length > 0 && now - authCalls[0]! > windowMs) authCalls.shift();
+    if (authCalls.length < 12) {
+      authCalls.push(now);
+      return;
+    }
+    await new Promise((r) => setTimeout(r, authCalls[0]! + windowMs - now + 100));
+  }
+}
+
+const tokenCache = new Map<string, string>();
+
 async function registerUser(
   request: APIRequestContext,
   role: 'buyer' | 'seller',
@@ -13,6 +33,7 @@ async function registerUser(
   const email = `${prefix}-${suffix}@e2e.test`;
   const password = 'password123';
   const displayName = `${prefix} User ${suffix.slice(-4)}`;
+  await paceAuth();
   const res = await request.post(`${API_URL}/auth/register`, {
     data: { email, password, displayName, role },
   });
@@ -22,13 +43,18 @@ async function registerUser(
 }
 
 async function loginApi(request: APIRequestContext, email: string, password = 'password123'): Promise<string> {
+  const cached = tokenCache.get(email);
+  if (cached) return cached;
+  await paceAuth();
   const res = await request.post(`${API_URL}/auth/login`, { data: { email, password } });
   expect(res.status()).toBe(200);
   const body = (await res.json()) as { token: string };
+  tokenCache.set(email, body.token);
   return body.token;
 }
 
 async function uiLogin(page: Page, email: string, password = 'password123'): Promise<void> {
+  await paceAuth();
   await page.goto('/uk/login');
   await page.locator('#login-email').fill(email);
   await page.locator('#login-password').fill(password);
@@ -74,6 +100,23 @@ async function createAndApproveLot(
   expect((await request.post(`${API_URL}/lots/${lot.id}/submit`, { headers: { Authorization: `Bearer ${sellerToken}` } })).status()).toBe(200);
   expect((await request.post(`${API_URL}/lots/${lot.id}/approve`, { headers: { Authorization: `Bearer ${modToken}` } })).status()).toBe(200);
   return lot.id;
+}
+
+/** The one DB fixture the suite needs: lots last 1-10 days and the server clock is real, so the end is moved. */
+async function setLotEnd(lotId: string, intervalSql: string): Promise<void> {
+  const pool = new pg.Pool({ connectionString: DB_URL });
+  try {
+    await pool.query(`update lots set ends_at = now() + interval '${intervalSql}' where id = $1`, [lotId]);
+  } finally {
+    await pool.end();
+  }
+}
+
+async function lotEndsAt(request: APIRequestContext, lotId: string): Promise<{ endsAt: number; serverNow: number }> {
+  const res = await request.get(`${API_URL}/lots/${lotId}`);
+  expect(res.status()).toBe(200);
+  const body = (await res.json()) as { endsAt: string };
+  return { endsAt: Date.parse(body.endsAt), serverNow: Date.parse(res.headers()['date'] ?? '') };
 }
 
 test.describe('Online Auction E2E', () => {
@@ -135,13 +178,11 @@ test.describe('Online Auction E2E', () => {
 
     const lotId = await createAndApproveLot(request, seller.token, modToken);
 
-    // Move ends_at to 50 seconds from now so the next bid triggers anti-sniping (+2 min):
-    const pool = new pg.Pool({ connectionString: DB_URL });
-    try {
-      await pool.query("update lots set ends_at = now() + interval '50 seconds' where id = $1", [lotId]);
-    } finally {
-      await pool.end();
-    }
+    // Fixture only: put the lot 50 s before its end (lots last >= 1 day). The extension itself is NOT faked:
+    // it must be produced by the server when the bid below is accepted.
+    await setLotEnd(lotId, '50 seconds');
+    const before = await lotEndsAt(request, lotId);
+    expect(before.endsAt - before.serverNow).toBeLessThan(60_000);
 
     const ctxA = await browser.newContext();
     const ctxB = await browser.newContext();
@@ -171,9 +212,97 @@ test.describe('Online Auction E2E', () => {
       await expect
         .poll(async () => await pageA.getByTestId('lot-ends-at').textContent(), { timeout: 5_000 })
         .not.toBe(endsBefore);
+      await expect(pageA.getByTestId('lot-ends-at')).toHaveText((await pageB.getByTestId('lot-ends-at').textContent()) ?? '');
+
+      // The server moved the end to ~ bid time + 2 min (anti-sniping window), not to an arbitrary value.
+      const after = await lotEndsAt(request, lotId);
+      const extension = after.endsAt - after.serverNow;
+      expect(extension).toBeGreaterThan(100_000);
+      expect(extension).toBeLessThanOrEqual(125_000);
+      expect(after.endsAt).toBeGreaterThan(before.endsAt + 60_000);
     } finally {
       await ctxA.close();
       await ctxB.close();
+    }
+  });
+
+  test('2b) a bid far from the end does not extend the auction', async ({ browser, request }) => {
+    const seller = await registerUser(request, 'seller', 'e2e-s2b');
+    const buyer = await registerUser(request, 'buyer', 'e2e-a2b');
+    const modToken = await loginApi(request, 'moderator1@auction.test');
+    const lotId = await createAndApproveLot(request, seller.token, modToken);
+    const before = await lotEndsAt(request, lotId);
+
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    try {
+      await uiLogin(page, buyer.email);
+      await uiTopUpViaStub(page, '500');
+      await page.goto(`/uk/lots/${lotId}`);
+      await page.getByTestId('bid-amount-input').fill('100');
+      await page.getByTestId('place-bid-btn').click();
+      await expect(page.getByTestId('bid-feedback')).toBeVisible();
+      expect((await lotEndsAt(request, lotId)).endsAt).toBe(before.endsAt);
+    } finally {
+      await ctx.close();
+    }
+  });
+
+  test('2c) bid -> outbid -> win by the worker -> notification -> pay from the wallet (keyboard)', async ({ browser, request }) => {
+    const seller = await registerUser(request, 'seller', 'e2e-s5');
+    const loser = await registerUser(request, 'buyer', 'e2e-l5');
+    const winner = await registerUser(request, 'buyer', 'e2e-w5');
+    const modToken = await loginApi(request, 'moderator1@auction.test');
+    const lotId = await createAndApproveLot(request, seller.token, modToken, { startPrice: 10_000 });
+
+    const loserCtx = await browser.newContext();
+    const winnerCtx = await browser.newContext();
+    const loserPage = await loserCtx.newPage();
+    const winnerPage = await winnerCtx.newPage();
+    try {
+      await uiLogin(loserPage, loser.email);
+      await uiTopUpViaStub(loserPage, '1000');
+      await uiLogin(winnerPage, winner.email);
+      await uiTopUpViaStub(winnerPage, '1000');
+
+      // Real bids through the UI: the loser first, then the winner outbids.
+      await loserPage.goto(`/uk/lots/${lotId}`);
+      await loserPage.getByTestId('bid-amount-input').fill('100');
+      await loserPage.getByTestId('place-bid-btn').click();
+      await expect(loserPage.getByTestId('bid-feedback')).toBeVisible();
+
+      await winnerPage.goto(`/uk/lots/${lotId}`);
+      await winnerPage.getByTestId('bid-amount-input').fill('150');
+      await winnerPage.getByTestId('place-bid-btn').click();
+      await expect(winnerPage.getByTestId('lot-current-price')).toContainText('150,00 ₴', { timeout: 5_000 });
+      await expect(loserPage.getByTestId('lot-outbid-alert')).toBeVisible({ timeout: 5_000 });
+
+      // Fixture: let the (1-day) auction run out. Closing itself is done by the worker's BullMQ job.
+      await setLotEnd(lotId, '-1 second');
+      await expect
+        .poll(async () => {
+          const r = await request.get(`${API_URL}/lots/${lotId}`);
+          return ((await r.json()) as { status: string }).status;
+        }, { timeout: 30_000 })
+        .toBe('awaiting_payment');
+
+      // The winner is told (in-app notice with the 48 h window); the loser's deposit is released.
+      const notices = await request.get(`${API_URL}/notifications`, { headers: { Authorization: `Bearer ${winner.token}` } });
+      const won = ((await notices.json()) as { type: string; payload: { lotId: string; windowHours: number } }[])
+        .find((n) => n.type === 'won' && n.payload.lotId === lotId);
+      expect(won?.payload.windowHours).toBe(48);
+      const loserWallet = await request.get(`${API_URL}/wallet`, { headers: { Authorization: `Bearer ${loser.token}` } });
+      expect(((await loserWallet.json()) as { held: number }).held).toBe(0);
+
+      // Pay from the wallet with the keyboard only.
+      await winnerPage.goto(`/uk/lots/${lotId}`);
+      await expect(winnerPage.getByTestId('lot-sale-panel')).toBeVisible();
+      await winnerPage.getByTestId('pay-sale-btn').focus();
+      await winnerPage.keyboard.press('Enter');
+      await expect(winnerPage.getByTestId('lot-status-badge')).toContainText('Оплачено');
+    } finally {
+      await loserCtx.close();
+      await winnerCtx.close();
     }
   });
 
