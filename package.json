@@ -2,13 +2,18 @@
   "name": "online-auction",
   "private": true,
   "packageManager": "pnpm@10.0.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "typecheck": "pnpm -r --if-present typecheck",
     "lint": "eslint .",
     "test": "pnpm -r --if-present test",
     "test:int": "pnpm -r --if-present test:int",
-    "verify": "pnpm typecheck && pnpm lint && pnpm test"
+    "verify": "pnpm typecheck && pnpm lint && pnpm gen:check && pnpm test",
+    "gen:openapi": "pnpm --filter @auction/api gen:openapi",
+    "gen:client": "pnpm --filter @auction/api-client gen",
+    "gen:check": "pnpm gen:openapi && pnpm gen:client && git diff --exit-code -- packages/api-client"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

@@ -17,7 +17,7 @@
 | 11 | Пошук + outbox | ✅ (тригер БД пише в `search_outbox` у транзакції запису; `SearchIndexer.drain` — SKIP LOCKED, апсерт/видалення, відкат при падінні Meilisearch; `reindexAll` — новий індекс + swap; `SearchService` з фільтрами/фасетами, 503 `SEARCH_UNAVAILABLE`. Цикл drain раз на ~1 с і CLI-команда реіндексу — з Nest-обв'язкою worker, етап 12/14) |
 | 12 | Сокети (2 репліки) | ✅ (`RealtimeServer` на Socket.IO без Nest-обв'язки: auth у handshake, підписка на лот зі снапшотом і догоном по `seq`, приватна кімната користувача, `time:sync`; шина — Postgres NOTIFY з тригера на `lots`; int-тест на двох реплік з реальними Postgres і Redis. Nest-гейтвей-обгортка — етап 14) |
 | 13 | Нотифікації | ✅ (`notifyOutbid` у транзакції ставки: in-app завжди, лист ≤ 1 за 15 хв на (user, lot); `NotificationService`: список/прочитано лише власні, нагадування за годину через CAS по `favorites.reminder_sent_at`, `drainEmails` — SKIP LOCKED з повтором при збої; цикли drain/нагадувань і SMTP-заглушка — з Nest-обв'язкою worker, етап 14) |
-| 14 | OpenAPI-клієнт | ⬜ |
+| 14 | OpenAPI-клієнт | 🔶 (частина 1: Nest-каркас, глобальні guard/фільтр помилок, auth, лоти, ставки, гаманець/поповнення, `gen:openapi`/`gen:client` (openapi-typescript + openapi-fetch), HTTP int-тест. Лишилось: модерація, медіа, пошук, нотифікації, вебхук/сторінка оплати заглушки, Nest-обв'язка worker, запуск RealtimeServer у main) |
 | 15 | Веб | ⬜ |
 | 16 | Звіти, звірка | ⬜ |
 | 17 | Сид | ⬜ |
@@ -89,6 +89,7 @@
 | D21 | Другий шанс: кандидати й залог | Кандидат — користувач без попередньої спроби з найбільшим `max(bids.max_amount)` (рівні — раніша ставка); ціна = його максимум (без перевірки резерву); якщо не вистачає коштів на залог 10% — пропускається. Залог неплатника → `seller_payable` (effectKey `forfeit:lot:user`). Нікого не лишилось → `ended_unsold` |
 | D22 | Модерація | Лот у черзі вільний, якщо `review_lease_until` null або минув (за `Clock`); claim — `FOR UPDATE SKIP LOCKED`, оренда 15 хв; рішення під чужою живою орендою — 409 `LOT_CLAIMED`; прострочену оренду очищає `releaseExpiredLeases` (подія `review_lease_expired`). Зняття: залоги звільняються в тій же транзакції, `bidder_maxes` видаляються (другий шанс неможливий), у подію `removed` пишуться `notifyUserIds` для листів |
 | D23 | Шина живих оновлень | Postgres `NOTIFY lot_changed` з тригера на `lots` (відправляється на commit, також зі змін worker); кожна репліка емітить лише своїм клієнтам (`io.local`). Redis-адаптер лише для міжрепліковых операцій (`disconnectUser`); втрата Redis оновлень не губить. Клієнт застосовує оновлення, якщо `seq` не менший за відомий; при перепідключенні — `lot:subscribe {lastSeq}` повертає пропущені ставки (≤100) |
+| D24 | Nest-шар | Контролери тонкі: вхід валідують сервіси (Zod із shared), відповіді описані Zod-схемами в `http/schemas.ts` → OpenAPI (`zod-to-json-schema`, без nestjs-zod: конфлікт peer-версій). Guard глобальний і «закритий за замовчуванням»: відкриті лише `@Public()`; ролі — `@Roles()`. Усі помилки (AppError, HttpException, помилки body-parser) → `{code,message,details}`; невідоме → 500 `INTERNAL_ERROR` без деталей. Не-UUID у шляху → 400 |
 | D19 | Стан платежу | `succeeded` термінальний і виграє в `failed`/`expired`; кредит рівно раз (блок рядка + `effectKey topup:<id>` + дедуп за `provider_event_id`); `failed`/`expired` лише з `pending`; `created_at` платежу з `Clock`. Сесії заглушки in-memory (одна інстанція) |
 
 ## Журнал комітів
@@ -109,3 +110,4 @@
 | (етап 11) | `feat(search): trigger-fed outbox, meilisearch indexer, reindex swap, search service` |
 | (етап 12) | `feat(realtime): socket.io gateway, pg-notify bus, seq catch-up, private outbid; fix(search): per-lot advisory lock in indexer` |
 | (етап 13) | `feat(notifications): outbid notices with 15-min email limit, ending reminders, email outbox drain` |
+| (етап 14, ч.1) | `feat(api): nest http layer, auth, lots, bids, wallet, openapi client generation` |
