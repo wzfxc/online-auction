@@ -171,6 +171,11 @@ export class LotService {
       const [lot] = await tx.select().from(lots).where(eq(lots.id, lotId)).for('update');
       if (!lot) throw Errors.notFound('Lot');
       this.assertTransition(lot.status, to, 'moderator');
+      // Another moderator's live lease blocks the decision (invariant 9); an expired one does not.
+      if (lot.moderatorId !== null && lot.moderatorId !== moderator.id
+        && lot.reviewLeaseUntil !== null && lot.reviewLeaseUntil.getTime() > now.getTime()) {
+        throw Errors.conflict('LOT_CLAIMED', 'Lot is being reviewed by another moderator');
+      }
       const [row] = await tx.update(lots)
         .set({ ...extra(lot, now), status: to, moderatorId: moderator.id, reviewLeaseUntil: null, updatedAt: now })
         .where(and(eq(lots.id, lotId), eq(lots.status, lot.status))).returning();

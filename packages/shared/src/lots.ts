@@ -75,3 +75,6 @@ export const appendDescriptionSchema = z.object({ append: z.string().trim().min(
 export type AppendDescriptionInput = z.infer<typeof appendDescriptionSchema>;
 
 export const rejectLotSchema = z.object({ reason: z.string().trim().min(3).max(1000) });
+
+/** A moderator who takes a lot from the queue holds it this long before it returns to the queue. */
+export const REVIEW_LEASE_MINUTES = 15;
