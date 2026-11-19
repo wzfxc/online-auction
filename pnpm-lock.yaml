@@ -80,6 +80,9 @@ importers:
       socket.io:
         specifier: ^4.8.4
         version: 4.8.4
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
       zod:
         specifier: ^3.23.0
         version: 3.25.76
@@ -111,17 +114,20 @@ importers:
       supertest:
         specifier: ^7.3.2
         version: 7.3.2
-      tsx:
-        specifier: ^4.23.15
-        version: 4.23.15
 
   apps/web: {}
 
   apps/worker:
     dependencies:
+      '@auction/api':
+        specifier: workspace:*
+        version: link:../api
       '@auction/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
 
   packages/api-client:
     dependencies:

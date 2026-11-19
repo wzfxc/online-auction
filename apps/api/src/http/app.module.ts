@@ -21,6 +21,7 @@ import { AuthController } from './auth.controller.js';
 import { AuthGuard } from './auth.js';
 import { BidsController } from './bids.controller.js';
 import { ErrorFilter } from './error.filter.js';
+import { HealthController } from './health.controller.js';
 import { LotsController } from './lots.controller.js';
 import { CLOCK, CONFIG, DB, type ApiConfig } from './tokens.js';
 import { WalletController } from './wallet.controller.js';
@@ -36,7 +37,7 @@ export interface ApiDeps {
 
 export const CONTROLLERS = [
   AuthController, LotsController, BidsController, WalletController,
-  ModerationController, MediaController, SearchController, NotificationsController, PaymentsController,
+  ModerationController, MediaController, SearchController, NotificationsController, PaymentsController, HealthController,
 ];
 
 /** The API never sends mail itself (the worker drains the outbox); reaching this is a wiring bug. */
