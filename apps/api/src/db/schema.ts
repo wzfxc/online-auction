@@ -216,6 +216,14 @@ export const paymentWebhookEvents = pgTable('payment_webhook_events', {
   receivedAt: ts('received_at').notNull().defaultNow(),
 });
 
+/** Shared state for the payment stub across API replicas and the worker reconciler (D25). */
+export const paymentStubSessions = pgTable('payment_stub_sessions', {
+  paymentId: uuid('payment_id').primaryKey(),
+  amount: money('amount').notNull(),
+  outcome: text('outcome'),
+  createdAt: ts('created_at').notNull().defaultNow(),
+});
+
 /** One row per payment attempt for a won lot (winner first, then second-chance offers). */
 export const sales = pgTable('sales', {
   id: id(),

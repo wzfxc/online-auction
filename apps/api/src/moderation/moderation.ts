@@ -3,7 +3,7 @@ import { canTransition, rejectLotSchema, REVIEW_LEASE_MINUTES } from '@auction/s
 import type { Clock } from '../common/clock/clock.js';
 import { Errors } from '../common/errors/app-error.js';
 import type { Db } from '../db/client.js';
-import { bidderMaxes, deposits, lotEvents, lots } from '../db/schema.js';
+import { bidderMaxes, bids, deposits, emailOutbox, lotEvents, lots, notifications } from '../db/schema.js';
 import { releaseDeposit } from '../ledger/wallet.js';
 import type { LotDto, Principal } from '../lots/lots.js';
 import { toLotDto } from '../lots/lots.js';
@@ -90,6 +90,21 @@ export class ModerationService {
         .where(and(eq(deposits.lotId, lotId), sql`${deposits.amount} > 0`)).orderBy(asc(deposits.userId));
       for (const { userId } of held) await releaseDeposit(tx, userId, lotId, now);
       await tx.delete(bidderMaxes).where(eq(bidderMaxes.lotId, lotId));
+
+      const bidderRows = await tx.selectDistinct({ userId: bids.userId }).from(bids).where(eq(bids.lotId, lotId));
+      const participants = [...new Set([...held.map((h) => h.userId), ...bidderRows.map((b) => b.userId)])];
+      for (const userId of participants) {
+        const key = `lot_removed:${lotId}:${userId}`;
+        await tx.insert(notifications).values({
+          userId, type: 'lot_removed', createdAt: now, dedupeKey: key,
+          payload: { lotId, lotTitle: lot.title, reason: parsed.data.reason },
+        }).onConflictDoNothing();
+        await tx.insert(emailOutbox).values({
+          userId, lotId, kind: 'lot_removed', createdAt: now, dedupeKey: key,
+          subject: `Лот «${lot.title}» знято модератором`,
+          body: `Лот «${lot.title}» було знято з торгів. Причина: ${parsed.data.reason}. Ваш залог розблоковано.`,
+        }).onConflictDoNothing();
+      }
 
       const seq = lot.lastSeq + 1;
       const [row] = await tx.update(lots)

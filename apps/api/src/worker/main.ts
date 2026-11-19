@@ -6,7 +6,8 @@ import { createDb, runMigrations } from '../db/client.js';
 import { MediaService } from '../media/media.js';
 import { S3Storage } from '../media/storage.js';
 import { ModerationService } from '../moderation/moderation.js';
-import { NotificationService, type EmailSender } from '../notifications/notifications.js';
+import { NotificationService } from '../notifications/notifications.js';
+import { SmtpEmailSender } from '../notifications/smtp.js';
 import { PaymentService } from '../payments/payments.js';
 import { StubPaymentProvider } from '../payments-stub/provider.js';
 import { SearchIndexer } from '../search/indexer.js';
@@ -14,14 +15,6 @@ import { startLoops, type Loop } from './loops.js';
 
 const SECOND = 1_000;
 const MINUTE = 60 * SECOND;
-
-/** Mail stub: the message is logged instead of leaving the system (no external services). */
-const logSender: EmailSender = {
-  send(to, subject): Promise<void> {
-    console.log(`[mail] to=${to} subject=${subject}`);
-    return Promise.resolve();
-  },
-};
 
 async function main(): Promise<void> {
   const env = loadEnv();
@@ -40,11 +33,13 @@ async function main(): Promise<void> {
 
   const closing = new ClosingService(db, clock);
   const moderation = new ModerationService(db, clock);
-  const notifications = new NotificationService(db, clock, logSender);
+  const mailSender = new SmtpEmailSender({ host: env.SMTP_HOST, port: env.SMTP_PORT, from: env.MAIL_FROM });
+  const notifications = new NotificationService(db, clock, mailSender);
   const media = new MediaService(db, clock, storage);
-  // The worker only reconciles from the provider's status; the stub has no remote state here, so it never delivers.
+  // Shared session state in Postgres lets the worker reconcile payments created on any API replica.
   const provider = new StubPaymentProvider({
     clock, secret: env.PAYMENT_WEBHOOK_SECRET, mode: 'none', baseUrl: env.PAYMENT_STUB_BASE_URL,
+    db,
     random: Math.random, schedule: () => undefined, deliver: () => Promise.resolve(),
   });
   const payments = new PaymentService(db, clock, provider, env.PAYMENT_WEBHOOK_SECRET);

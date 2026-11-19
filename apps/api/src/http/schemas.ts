@@ -99,3 +99,8 @@ export const markReadResultSchema = z.object({ updated: z.number().int() });
 
 export const webhookAckSchema = z.object({ duplicate: z.boolean() });
 export const payerActionSchema = z.object({ action: z.enum(['success', 'fail', 'close']) });
+export const stubSessionSchema = z.object({
+  paymentId: z.string().uuid(),
+  amount: kopecks,
+  status: z.enum(['pending', 'succeeded', 'failed', 'expired']),
+});

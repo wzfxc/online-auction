@@ -415,6 +415,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/payments-stub/sessions/{paymentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Payment stub session details */
+        get: operations["getStubSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/payments-stub/pay/{paymentId}": {
         parameters: {
             query?: never;
@@ -422,7 +439,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** HTML payment stub page */
+        get: operations["getStubPayPage"];
         put?: never;
         /** Payment stub: the payer picks an outcome */
         post: operations["stubPay"];
@@ -2765,6 +2783,95 @@ export interface operations {
             };
             /** @description Authentication required (UNAUTHORIZED) */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    getStubSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        paymentId: string;
+                        amount: number;
+                        /** @enum {string} */
+                        status: "pending" | "succeeded" | "failed" | "expired";
+                    };
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    getStubPayPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

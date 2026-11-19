@@ -29,6 +29,7 @@ async function main(): Promise<void> {
   const selfUrl = `http://127.0.0.1:${env.PORT}`;
   const provider = new StubPaymentProvider({
     clock, secret: env.PAYMENT_WEBHOOK_SECRET, mode: env.PAYMENT_STUB_MODE, baseUrl: env.PAYMENT_STUB_BASE_URL,
+    db,
     random: Math.random,
     schedule: (task, ms) => {
       setTimeout(() => void task().catch((e: unknown) => console.error('webhook delivery failed', e)), ms).unref();
@@ -50,6 +51,7 @@ async function main(): Promise<void> {
 
   const realtime = new RealtimeServer({
     db, clock, databaseUrl: env.DATABASE_URL, ...(env.REDIS_URL ? { redisUrl: env.REDIS_URL } : {}),
+    corsOrigin: '*',
     authenticate: (token) => {
       const claims = verifyToken(token, env.JWT_SECRET, Math.floor(clock.now().getTime() / 1000));
       return Promise.resolve(claims ? { id: claims.sub, role: claims.role } : null);

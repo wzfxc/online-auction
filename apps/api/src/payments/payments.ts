@@ -70,7 +70,7 @@ export class PaymentService {
       async (tx) => {
         const [p] = await tx.insert(payments).values({ userId, amount, createdAt: this.clock.now() }).returning({ id: payments.id });
         if (!p) throw new Error('Payment insert returned no row');
-        const { payUrl } = this.provider.createSession(p.id, amount);
+        const { payUrl } = await this.provider.createSession(p.id, amount);
         return { status: 201, body: { paymentId: p.id, amount, payUrl } };
       },
     );
@@ -110,7 +110,7 @@ export class PaymentService {
       .limit(RECONCILE_BATCH);
     let settled = 0;
     for (const { id } of stale) {
-      const status = this.provider.getStatus(id);
+      const status = await this.provider.getStatus(id);
       if (status === 'pending') continue;
       await this.db.transaction((tx) => settlePayment(tx, id, status, this.clock.now()));
       settled += 1;

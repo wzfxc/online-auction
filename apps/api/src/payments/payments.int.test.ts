@@ -126,4 +126,39 @@ describe('top-up payments', () => {
   it('keeps the ledger balanced', async () => {
     await db.transaction(async (tx) => expect(await findUnbalancedTransactions(tx)).toEqual([]));
   });
+
+  it('shares stub payment sessions across replicas and worker via Postgres (D25)', async () => {
+    const clock = new FakeClock();
+    const inbox2: DeliveredWebhook[] = [];
+    // Replica 1 creates the top-up session; Replica 2 resolves it; Worker reconciles if webhook is dropped.
+    const replica1Provider = new StubPaymentProvider({
+      clock, secret: SECRET, mode: 'none', baseUrl: 'http://stub', db, random: () => 0,
+      deliver: async () => undefined, schedule: () => undefined,
+    });
+    const replica2Provider = new StubPaymentProvider({
+      clock, secret: SECRET, mode: 'none', baseUrl: 'http://stub', db, random: () => 0,
+      deliver: async (h) => { inbox2.push(h); },
+      schedule: (task) => { void task(); },
+    });
+    const workerProvider = new StubPaymentProvider({
+      clock, secret: SECRET, mode: 'none', baseUrl: 'http://stub', db, random: () => 0,
+      deliver: async () => undefined, schedule: () => undefined,
+    });
+    const replica1Payments = new PaymentService(db, clock, replica1Provider, SECRET);
+    const workerPayments = new PaymentService(db, clock, workerProvider, SECRET);
+
+    const u = await newUser();
+    const { body } = await replica1Payments.createTopUp(u, 75_000, 'cross-replica-1');
+    // Replica 2 can inspect and resolve the session created on Replica 1:
+    expect(await replica2Provider.getSession(body.paymentId)).toEqual({
+      paymentId: body.paymentId, amount: 75_000, status: 'pending',
+    });
+    await replica2Provider.resolve(body.paymentId, 'success');
+    expect(await workerProvider.getStatus(body.paymentId)).toBe('succeeded');
+
+    // Even if the webhook is dropped, the worker reconciles from the shared session state:
+    clock.advance(RECONCILE_GRACE_MS + 1);
+    await workerPayments.reconcile();
+    expect(await available(u)).toBe(75_000);
+  });
 });

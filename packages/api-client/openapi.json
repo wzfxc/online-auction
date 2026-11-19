@@ -5201,7 +5201,159 @@
         ]
       }
     },
+    "/payments-stub/sessions/{paymentId}": {
+      "get": {
+        "operationId": "getStubSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "paymentId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "amount": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "succeeded",
+                        "failed",
+                        "expired"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "paymentId",
+                    "amount",
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "Payment stub session details",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
     "/payments-stub/pay/{paymentId}": {
+      "get": {
+        "operationId": "getStubPayPage",
+        "parameters": [],
+        "responses": {
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "summary": "HTML payment stub page",
+        "tags": [
+          "payments"
+        ]
+      },
       "post": {
         "operationId": "stubPay",
         "parameters": [],

@@ -11,6 +11,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm lint
+      - run: pnpm gen:check
       - run: pnpm test
   integration:
     runs-on: ubuntu-latest
@@ -33,5 +34,14 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
+      - name: Start Meilisearch, MinIO and Mailpit
+        run: |
+          docker run -d --name meili -p 127.0.0.1:7700:7700 -e MEILI_MASTER_KEY=dev_meili_master_key_change_me_32chars -e MEILI_ENV=development getmeili/meilisearch:v1.11
+          docker run -d --name minio -p 127.0.0.1:9000:9000 -e MINIO_ROOT_USER=minio_dev_access -e MINIO_ROOT_PASSWORD=minio_dev_secret_key chainguard/minio:latest server /data
+          docker run -d --name mail -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:8025 axllent/mailpit:latest
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:7700/health >/dev/null && break
+            sleep 1
+          done
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:int

@@ -7,6 +7,7 @@ import { categories, cities, emailOutbox, favorites, lots, notifications, users 
 import { topUp } from '../ledger/wallet.js';
 import type { Principal } from '../lots/lots.js';
 import { NotificationService, type EmailSender } from './notifications.js';
+import { SmtpEmailSender } from './smtp.js';
 
 const { pool, db } = createDb(process.env.TEST_DATABASE_URL);
 const clock = new FakeClock('2030-01-01T00:00:00.000Z');
@@ -140,5 +141,28 @@ describe('email delivery', () => {
     expect(counts.reduce((x, y) => x + y, 0)).toBe(3);
     expect(sent.map((m) => m.subject).sort()).toEqual(['s1', 's2', 's3']);
     expect(await svc.drainEmails()).toBe(0);
+  });
+
+  it('delivers UTF-8 emails through SmtpEmailSender to Mailpit over SMTP', async () => {
+    const smtpHost = process.env.SMTP_HOST ?? '127.0.0.1';
+    const smtpPort = Number(process.env.SMTP_PORT ?? '1025');
+    const smtpSender = new SmtpEmailSender({ host: smtpHost, port: smtpPort, from: 'auction@example.test' });
+    const smtpSvc = new NotificationService(db, clock, smtpSender);
+
+    await db.delete(emailOutbox);
+    const u = await newUser('buyer');
+    const uniqueSubj = `Тест SMTP ${clock.now().getTime()}`;
+    await db.insert(emailOutbox).values({
+      userId: u.id, kind: 'outbid', subject: uniqueSubj, body: 'Тіло листа українською 100 ₴',
+      createdAt: clock.now(), dedupeKey: `smtp-test-${uniqueSubj}`,
+    });
+
+    expect(await smtpSvc.drainEmails()).toBe(1);
+    expect(await smtpSvc.drainEmails()).toBe(0);
+
+    const apiRes = await fetch('http://127.0.0.1:8025/api/v1/messages');
+    expect(apiRes.ok).toBe(true);
+    const data = (await apiRes.json()) as { messages?: { Subject?: string }[] };
+    expect(data.messages?.some((m) => m.Subject === uniqueSubj)).toBe(true);
   });
 });
