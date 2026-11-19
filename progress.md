@@ -4,8 +4,8 @@
 | # | Етап | Статус |
 | --- | --- | --- |
 | 0 | Аудит, план, CLAUDE.md, progress.md | ✅ |
-| 1 | Каркас монорепо + CI | ⏳ |
-| 2 | Docker compose, інфраструктура | ⬜ |
+| 1 | Каркас монорепо + CI | ✅ |
+| 2 | Docker compose, інфраструктура | ⏳ |
 | 3 | Схема БД, міграції | ⬜ |
 | 4 | Гроші/проводки/wallet/Clock/помилки/auth/idempotency | ⬜ |
 | 5 | Платіжна заглушка | ⬜ |
@@ -86,3 +86,4 @@
 | Коміт | Опис |
 | --- | --- |
 | (етап 0) | `chore: audit, plan, CLAUDE.md, progress.md` |
+| (етап 1) | `chore: monorepo scaffold, lint rules, CI, money rules in shared` |
