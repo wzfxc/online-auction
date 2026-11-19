@@ -10,6 +10,7 @@ import { NotificationService } from '../notifications/notifications.js';
 import { SmtpEmailSender } from '../notifications/smtp.js';
 import { PaymentService } from '../payments/payments.js';
 import { StubPaymentProvider } from '../payments-stub/provider.js';
+import { SalesService } from '../sales/sales.js';
 import { SearchIndexer } from '../search/indexer.js';
 import { startLoops, type Loop } from './loops.js';
 
@@ -32,6 +33,7 @@ async function main(): Promise<void> {
   await indexer.ensureIndex();
 
   const closing = new ClosingService(db, clock);
+  const sales = new SalesService(db, clock);
   const moderation = new ModerationService(db, clock);
   const mailSender = new SmtpEmailSender({ host: env.SMTP_HOST, port: env.SMTP_PORT, from: env.MAIL_FROM });
   const notifications = new NotificationService(db, clock, mailSender);
@@ -54,6 +56,7 @@ async function main(): Promise<void> {
     { name: 'search-drain', intervalMs: SECOND, run: () => indexer.drain() },
     { name: 'close-ended-lots', intervalMs: SECOND, run: () => closing.sweepEndedLots() },
     { name: 'overdue-sales', intervalMs: 10 * SECOND, run: () => closing.sweepOverdueSales() },
+    { name: 'auto-confirm-sales', intervalMs: 30 * SECOND, run: () => sales.sweepAutoConfirmSales() },
     { name: 'moderation-leases', intervalMs: 30 * SECOND, run: () => moderation.releaseExpiredLeases() },
     { name: 'photos', intervalMs: 2 * SECOND, run: processPhotos },
     { name: 'emails', intervalMs: 2 * SECOND, run: () => notifications.drainEmails() },

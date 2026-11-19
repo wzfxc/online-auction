@@ -658,6 +658,479 @@
         ]
       }
     },
+    "/lots/mine": {
+      "get": {
+        "operationId": "listMyLots",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "not": {}
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "in_review",
+                    "rejected",
+                    "active",
+                    "ended_unsold",
+                    "awaiting_payment",
+                    "paid",
+                    "shipped",
+                    "completed",
+                    "removed"
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "sellerId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "categoryId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "cityId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "condition": {
+                            "type": "string",
+                            "enum": [
+                              "new",
+                              "like_new",
+                              "good",
+                              "fair",
+                              "poor"
+                            ]
+                          },
+                          "startPrice": {
+                            "type": "integer"
+                          },
+                          "buyNowPrice": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "durationDays": {
+                            "type": "integer"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "in_review",
+                              "rejected",
+                              "active",
+                              "ended_unsold",
+                              "awaiting_payment",
+                              "paid",
+                              "shipped",
+                              "completed",
+                              "removed"
+                            ]
+                          },
+                          "currentPrice": {
+                            "type": "integer"
+                          },
+                          "bidCount": {
+                            "type": "integer"
+                          },
+                          "endsAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "nullable": true
+                          },
+                          "reserveMet": {
+                            "type": "boolean",
+                            "nullable": true
+                          },
+                          "rejectionReason": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "reservePrice": {
+                            "type": "integer",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "sellerId",
+                          "title",
+                          "description",
+                          "categoryId",
+                          "cityId",
+                          "condition",
+                          "startPrice",
+                          "buyNowPrice",
+                          "durationDays",
+                          "status",
+                          "currentPrice",
+                          "bidCount",
+                          "endsAt",
+                          "reserveMet",
+                          "rejectionReason",
+                          "reservePrice"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "countsByStatus": {
+                      "type": "object",
+                      "required": [
+                        "draft",
+                        "in_review",
+                        "rejected",
+                        "active",
+                        "ended_unsold",
+                        "awaiting_payment",
+                        "paid",
+                        "shipped",
+                        "completed",
+                        "removed"
+                      ],
+                      "properties": {
+                        "draft": {
+                          "type": "integer"
+                        },
+                        "in_review": {
+                          "type": "integer"
+                        },
+                        "rejected": {
+                          "type": "integer"
+                        },
+                        "active": {
+                          "type": "integer"
+                        },
+                        "ended_unsold": {
+                          "type": "integer"
+                        },
+                        "awaiting_payment": {
+                          "type": "integer"
+                        },
+                        "paid": {
+                          "type": "integer"
+                        },
+                        "shipped": {
+                          "type": "integer"
+                        },
+                        "completed": {
+                          "type": "integer"
+                        },
+                        "removed": {
+                          "type": "integer"
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "pendingPayout": {
+                      "type": "integer"
+                    },
+                    "paidOutTotal": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "countsByStatus",
+                    "pendingPayout",
+                    "paidOutTotal"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Seller lots filtered by status, plus pending and completed payout totals",
+        "tags": [
+          "lots"
+        ]
+      }
+    },
+    "/lots/participating": {
+      "get": {
+        "operationId": "listParticipatingLots",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "sellerId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "categoryId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "cityId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "condition": {
+                        "type": "string",
+                        "enum": [
+                          "new",
+                          "like_new",
+                          "good",
+                          "fair",
+                          "poor"
+                        ]
+                      },
+                      "startPrice": {
+                        "type": "integer"
+                      },
+                      "buyNowPrice": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "durationDays": {
+                        "type": "integer"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "draft",
+                          "in_review",
+                          "rejected",
+                          "active",
+                          "ended_unsold",
+                          "awaiting_payment",
+                          "paid",
+                          "shipped",
+                          "completed",
+                          "removed"
+                        ]
+                      },
+                      "currentPrice": {
+                        "type": "integer"
+                      },
+                      "bidCount": {
+                        "type": "integer"
+                      },
+                      "endsAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                      },
+                      "reserveMet": {
+                        "type": "boolean",
+                        "nullable": true
+                      },
+                      "rejectionReason": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "sellerId",
+                      "title",
+                      "description",
+                      "categoryId",
+                      "cityId",
+                      "condition",
+                      "startPrice",
+                      "buyNowPrice",
+                      "durationDays",
+                      "status",
+                      "currentPrice",
+                      "bidCount",
+                      "endsAt",
+                      "reserveMet",
+                      "rejectionReason"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Public lots where the caller has placed bids",
+        "tags": [
+          "lots"
+        ]
+      }
+    },
     "/lots/{id}": {
       "get": {
         "operationId": "getLot",
@@ -1185,6 +1658,239 @@
         ]
       }
     },
+    "/lots/{id}/sale": {
+      "get": {
+        "operationId": "getLotSale",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "lotId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "lotTitle": {
+                      "type": "string"
+                    },
+                    "sellerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "buyerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "buyerName": {
+                      "type": "string"
+                    },
+                    "buyerEmail": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "attempt": {
+                      "type": "integer"
+                    },
+                    "price": {
+                      "type": "integer"
+                    },
+                    "fee": {
+                      "type": "integer"
+                    },
+                    "sellerPayout": {
+                      "type": "integer"
+                    },
+                    "depositHeld": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "awaiting_payment",
+                        "paid",
+                        "shipped",
+                        "completed",
+                        "defaulted",
+                        "cancelled"
+                      ]
+                    },
+                    "payDueAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "paidAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "shippedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "trackingNumber": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "confirmedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "paidOutAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "lotId",
+                    "lotTitle",
+                    "sellerId",
+                    "buyerId",
+                    "buyerName",
+                    "buyerEmail",
+                    "attempt",
+                    "price",
+                    "fee",
+                    "sellerPayout",
+                    "depositHeld",
+                    "status",
+                    "payDueAt",
+                    "paidAt",
+                    "shippedAt",
+                    "trackingNumber",
+                    "confirmedAt",
+                    "paidOutAt",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false,
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Current/latest sale for a lot (visible to the buyer or seller)",
+        "tags": [
+          "lots"
+        ]
+      }
+    },
     "/lots/{id}/submit": {
       "post": {
         "operationId": "submitLot",
@@ -1677,7 +2383,7 @@
             "bearer": []
           }
         ],
-        "summary": "Return a rejected lot to draft",
+        "summary": "Return a rejected or ended_unsold lot to draft",
         "tags": [
           "lots"
         ]
@@ -3046,6 +3752,202 @@
         ]
       }
     },
+    "/wallet/history": {
+      "get": {
+        "operationId": "getWalletHistory",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "not": {}
+                },
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "available": {
+                      "type": "integer"
+                    },
+                    "held": {
+                      "type": "integer"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "payable": {
+                      "type": "integer"
+                    },
+                    "pendingPayout": {
+                      "type": "integer"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "txId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "accountType": {
+                            "type": "string",
+                            "enum": [
+                              "user_available",
+                              "user_hold",
+                              "seller_payable"
+                            ]
+                          },
+                          "amount": {
+                            "type": "integer"
+                          },
+                          "lotId": {
+                            "type": "string",
+                            "format": "uuid",
+                            "nullable": true
+                          },
+                          "lotTitle": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "txId",
+                          "kind",
+                          "accountType",
+                          "amount",
+                          "lotId",
+                          "lotTitle",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "available",
+                    "held",
+                    "total",
+                    "payable",
+                    "pendingPayout",
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Own balance, held deposits, payouts and ledger operations",
+        "tags": [
+          "wallet"
+        ]
+      }
+    },
     "/wallet/top-ups": {
       "post": {
         "operationId": "createTopUp",
@@ -3239,6 +4141,1840 @@
         "summary": "Start a top-up through the payment stub",
         "tags": [
           "wallet"
+        ]
+      }
+    },
+    "/sales": {
+      "get": {
+        "operationId": "listSales",
+        "parameters": [
+          {
+            "name": "role",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "not": {}
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "buyer",
+                    "seller"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "not": {}
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "awaiting_payment",
+                    "paid",
+                    "shipped",
+                    "completed",
+                    "defaulted",
+                    "cancelled"
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "lotId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "lotTitle": {
+                        "type": "string"
+                      },
+                      "sellerId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "buyerId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "buyerName": {
+                        "type": "string"
+                      },
+                      "buyerEmail": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "attempt": {
+                        "type": "integer"
+                      },
+                      "price": {
+                        "type": "integer"
+                      },
+                      "fee": {
+                        "type": "integer"
+                      },
+                      "sellerPayout": {
+                        "type": "integer"
+                      },
+                      "depositHeld": {
+                        "type": "integer"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "awaiting_payment",
+                          "paid",
+                          "shipped",
+                          "completed",
+                          "defaulted",
+                          "cancelled"
+                        ]
+                      },
+                      "payDueAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "paidAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                      },
+                      "shippedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                      },
+                      "trackingNumber": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "confirmedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                      },
+                      "paidOutAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "lotId",
+                      "lotTitle",
+                      "sellerId",
+                      "buyerId",
+                      "buyerName",
+                      "buyerEmail",
+                      "attempt",
+                      "price",
+                      "fee",
+                      "sellerPayout",
+                      "depositHeld",
+                      "status",
+                      "payDueAt",
+                      "paidAt",
+                      "shippedAt",
+                      "trackingNumber",
+                      "confirmedAt",
+                      "paidOutAt",
+                      "createdAt"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Own sales as buyer or seller",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/sales/{id}": {
+      "get": {
+        "operationId": "getSale",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "lotId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "lotTitle": {
+                      "type": "string"
+                    },
+                    "sellerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "buyerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "buyerName": {
+                      "type": "string"
+                    },
+                    "buyerEmail": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "attempt": {
+                      "type": "integer"
+                    },
+                    "price": {
+                      "type": "integer"
+                    },
+                    "fee": {
+                      "type": "integer"
+                    },
+                    "sellerPayout": {
+                      "type": "integer"
+                    },
+                    "depositHeld": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "awaiting_payment",
+                        "paid",
+                        "shipped",
+                        "completed",
+                        "defaulted",
+                        "cancelled"
+                      ]
+                    },
+                    "payDueAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "paidAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "shippedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "trackingNumber": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "confirmedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "paidOutAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "lotId",
+                    "lotTitle",
+                    "sellerId",
+                    "buyerId",
+                    "buyerName",
+                    "buyerEmail",
+                    "attempt",
+                    "price",
+                    "fee",
+                    "sellerPayout",
+                    "depositHeld",
+                    "status",
+                    "payDueAt",
+                    "paidAt",
+                    "shippedAt",
+                    "trackingNumber",
+                    "confirmedAt",
+                    "paidOutAt",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Sale details (buyer or seller of the lot only)",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/sales/{id}/pay": {
+      "post": {
+        "operationId": "paySale",
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "description": "Unique key per logical operation (8–128 chars)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sale paid; deposit credited and balance moved to escrow",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "lotId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "lotTitle": {
+                      "type": "string"
+                    },
+                    "sellerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "buyerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "buyerName": {
+                      "type": "string"
+                    },
+                    "buyerEmail": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "attempt": {
+                      "type": "integer"
+                    },
+                    "price": {
+                      "type": "integer"
+                    },
+                    "fee": {
+                      "type": "integer"
+                    },
+                    "sellerPayout": {
+                      "type": "integer"
+                    },
+                    "depositHeld": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "awaiting_payment",
+                        "paid",
+                        "shipped",
+                        "completed",
+                        "defaulted",
+                        "cancelled"
+                      ]
+                    },
+                    "payDueAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "paidAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "shippedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "trackingNumber": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "confirmedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "paidOutAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "lotId",
+                    "lotTitle",
+                    "sellerId",
+                    "buyerId",
+                    "buyerName",
+                    "buyerEmail",
+                    "attempt",
+                    "price",
+                    "fee",
+                    "sellerPayout",
+                    "depositHeld",
+                    "status",
+                    "payDueAt",
+                    "paidAt",
+                    "shippedAt",
+                    "trackingNumber",
+                    "confirmedAt",
+                    "paidOutAt",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "State conflict (business-rule codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rule violation (business-rule codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pay for a won lot from the wallet (deposit is credited)",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/sales/{id}/ship": {
+      "post": {
+        "operationId": "shipSale",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "trackingNumber": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 100
+                  }
+                },
+                "required": [
+                  "trackingNumber"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "lotId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "lotTitle": {
+                      "type": "string"
+                    },
+                    "sellerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "buyerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "buyerName": {
+                      "type": "string"
+                    },
+                    "buyerEmail": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "attempt": {
+                      "type": "integer"
+                    },
+                    "price": {
+                      "type": "integer"
+                    },
+                    "fee": {
+                      "type": "integer"
+                    },
+                    "sellerPayout": {
+                      "type": "integer"
+                    },
+                    "depositHeld": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "awaiting_payment",
+                        "paid",
+                        "shipped",
+                        "completed",
+                        "defaulted",
+                        "cancelled"
+                      ]
+                    },
+                    "payDueAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "paidAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "shippedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "trackingNumber": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "confirmedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "paidOutAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "lotId",
+                    "lotTitle",
+                    "sellerId",
+                    "buyerId",
+                    "buyerName",
+                    "buyerEmail",
+                    "attempt",
+                    "price",
+                    "fee",
+                    "sellerPayout",
+                    "depositHeld",
+                    "status",
+                    "payDueAt",
+                    "paidAt",
+                    "shippedAt",
+                    "trackingNumber",
+                    "confirmedAt",
+                    "paidOutAt",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "State conflict (business-rule codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark a paid sale as shipped with a tracking number (seller)",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/sales/{id}/confirm": {
+      "post": {
+        "operationId": "confirmReceipt",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "lotId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "lotTitle": {
+                      "type": "string"
+                    },
+                    "sellerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "buyerId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "buyerName": {
+                      "type": "string"
+                    },
+                    "buyerEmail": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "attempt": {
+                      "type": "integer"
+                    },
+                    "price": {
+                      "type": "integer"
+                    },
+                    "fee": {
+                      "type": "integer"
+                    },
+                    "sellerPayout": {
+                      "type": "integer"
+                    },
+                    "depositHeld": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "awaiting_payment",
+                        "paid",
+                        "shipped",
+                        "completed",
+                        "defaulted",
+                        "cancelled"
+                      ]
+                    },
+                    "payDueAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "paidAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "shippedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "trackingNumber": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "confirmedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "paidOutAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "lotId",
+                    "lotTitle",
+                    "sellerId",
+                    "buyerId",
+                    "buyerName",
+                    "buyerEmail",
+                    "attempt",
+                    "price",
+                    "fee",
+                    "sellerPayout",
+                    "depositHeld",
+                    "status",
+                    "payDueAt",
+                    "paidAt",
+                    "shippedAt",
+                    "trackingNumber",
+                    "confirmedAt",
+                    "paidOutAt",
+                    "createdAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "State conflict (business-rule codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm receipt of a shipped order; triggers payout to the seller",
+        "tags": [
+          "sales"
+        ]
+      }
+    },
+    "/categories": {
+      "get": {
+        "operationId": "listCategories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "slug": {
+                        "type": "string"
+                      },
+                      "nameUk": {
+                        "type": "string"
+                      },
+                      "nameEn": {
+                        "type": "string"
+                      },
+                      "namePl": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "slug",
+                      "nameUk",
+                      "nameEn",
+                      "namePl"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "All categories (uk/en/pl)",
+        "tags": [
+          "reference"
+        ]
+      }
+    },
+    "/cities": {
+      "get": {
+        "operationId": "listCities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "slug": {
+                        "type": "string"
+                      },
+                      "nameUk": {
+                        "type": "string"
+                      },
+                      "nameEn": {
+                        "type": "string"
+                      },
+                      "namePl": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "slug",
+                      "nameUk",
+                      "nameEn",
+                      "namePl"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "All cities (uk/en/pl)",
+        "tags": [
+          "reference"
+        ]
+      }
+    },
+    "/favorites": {
+      "get": {
+        "operationId": "listFavorites",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "sellerId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "categoryId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "cityId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "condition": {
+                        "type": "string",
+                        "enum": [
+                          "new",
+                          "like_new",
+                          "good",
+                          "fair",
+                          "poor"
+                        ]
+                      },
+                      "startPrice": {
+                        "type": "integer"
+                      },
+                      "buyNowPrice": {
+                        "type": "integer",
+                        "nullable": true
+                      },
+                      "durationDays": {
+                        "type": "integer"
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "draft",
+                          "in_review",
+                          "rejected",
+                          "active",
+                          "ended_unsold",
+                          "awaiting_payment",
+                          "paid",
+                          "shipped",
+                          "completed",
+                          "removed"
+                        ]
+                      },
+                      "currentPrice": {
+                        "type": "integer"
+                      },
+                      "bidCount": {
+                        "type": "integer"
+                      },
+                      "endsAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                      },
+                      "reserveMet": {
+                        "type": "boolean",
+                        "nullable": true
+                      },
+                      "rejectionReason": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "sellerId",
+                      "title",
+                      "description",
+                      "categoryId",
+                      "cityId",
+                      "condition",
+                      "startPrice",
+                      "buyNowPrice",
+                      "durationDays",
+                      "status",
+                      "currentPrice",
+                      "bidCount",
+                      "endsAt",
+                      "reserveMet",
+                      "rejectionReason"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Own favorite lots",
+        "tags": [
+          "reference"
+        ]
+      }
+    },
+    "/favorites/{id}": {
+      "post": {
+        "operationId": "addFavorite",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "lotId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "favorited": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "lotId",
+                    "favorited"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a lot to favorites (1h ending reminder)",
+        "tags": [
+          "reference"
+        ]
+      },
+      "delete": {
+        "operationId": "removeFavorite",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "lotId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "favorited": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "lotId",
+                    "favorited"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (VALIDATION_ERROR)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required (UNAUTHORIZED)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (FORBIDDEN and role/ownership codes)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "details": {}
+                  },
+                  "required": [
+                    "code",
+                    "message"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a lot from favorites",
+        "tags": [
+          "reference"
         ]
       }
     },
@@ -4560,6 +7296,25 @@
                 {
                   "type": "integer",
                   "minimum": 0
+                }
+              ]
+            }
+          },
+          {
+            "name": "noBids",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "not": {}
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "true",
+                    "false"
+                  ]
                 }
               ]
             }

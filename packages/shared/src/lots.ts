@@ -23,6 +23,7 @@ export const LOT_TRANSITIONS: readonly LotTransition[] = [
   { from: 'in_review', to: 'active', actor: 'moderator' },
   { from: 'in_review', to: 'rejected', actor: 'moderator' },
   { from: 'rejected', to: 'draft', actor: 'seller' },
+  { from: 'ended_unsold', to: 'draft', actor: 'seller' },
   { from: 'active', to: 'removed', actor: 'moderator' },
   { from: 'active', to: 'ended_unsold', actor: 'system' },
   { from: 'active', to: 'awaiting_payment', actor: 'system' },
@@ -81,6 +82,19 @@ export const appendDescriptionSchema = z.object({ append: z.string().trim().min(
 export type AppendDescriptionInput = z.infer<typeof appendDescriptionSchema>;
 
 export const rejectLotSchema = z.object({ reason: z.string().trim().min(3).max(1000) });
+
+export const SALE_STATUSES = [
+  'awaiting_payment', 'paid', 'shipped', 'completed', 'defaulted', 'cancelled',
+] as const;
+export type SaleStatus = (typeof SALE_STATUSES)[number];
+
+export const shipSaleSchema = z.object({
+  trackingNumber: z.string().trim().min(3).max(100),
+});
+export type ShipSaleInput = z.infer<typeof shipSaleSchema>;
+
+/** Days after shipment before receipt is confirmed automatically if the buyer has not confirmed. */
+export const AUTO_CONFIRM_DAYS = 7;
 
 /** A moderator who takes a lot from the queue holds it this long before it returns to the queue. */
 export const REVIEW_LEASE_MINUTES = 15;

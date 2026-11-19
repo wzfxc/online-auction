@@ -190,4 +190,90 @@ describe('remaining endpoints', () => {
     const wallet = await http().get('/wallet').set(bearer(buyer.token));
     expect(wallet.body).toEqual({ available: 20_000, held: 0 });
   });
+
+  it('drives reference data, favorites, my-lots, full sale payment/shipping/payout flow and RBAC over HTTP (invariants 7, 14, 15)', async () => {
+    const seller = await register('seller', 'flow-seller@t.test');
+    const buyer = await register('buyer', 'flow-buyer@t.test');
+    const stranger = await register('buyer', 'flow-stranger@t.test');
+    const [mod] = await db.insert(users).values({
+      email: 'flow-mod@t.test', displayName: 'Mod2', role: 'moderator', passwordHash: await hashPassword('password123'),
+    }).returning();
+    const modToken = (await http().post('/auth/login').send({ email: 'flow-mod@t.test', password: 'password123' })).body.token as string;
+    const [fin] = await db.insert(users).values({
+      email: 'flow-fin@t.test', displayName: 'Fin', role: 'finance', passwordHash: await hashPassword('password123'),
+    }).returning();
+    expect(mod!.role).toBe('moderator');
+    expect(fin!.role).toBe('finance');
+    const finToken = (await http().post('/auth/login').send({ email: 'flow-fin@t.test', password: 'password123' })).body.token as string;
+
+    // Reference endpoints are public:
+    expect((await http().get('/categories')).status).toBe(200);
+    expect((await http().get('/cities')).status).toBe(200);
+
+    // Moderator and finance cannot touch wallet or create lots (invariant 14):
+    expect((await http().get('/wallet').set(bearer(modToken))).status).toBe(403);
+    expect((await http().get('/wallet').set(bearer(finToken))).status).toBe(403);
+    expect((await http().post('/lots').set(bearer(finToken)).send(lotBody())).status).toBe(403);
+
+    // Create, submit, approve lot with buyNowPrice:
+    const created = await http().post('/lots').set(bearer(seller.token)).send({
+      ...lotBody(), startPrice: 20_000, reservePrice: 30_000, buyNowPrice: 50_000,
+    });
+    expect(created.status).toBe(201);
+    const lotId = created.body.id as string;
+    await http().post(`/lots/${lotId}/submit`).set(bearer(seller.token));
+    await http().post(`/lots/${lotId}/approve`).set(bearer(modToken));
+
+    // Favorites CRUD:
+    expect((await http().post(`/favorites/${lotId}`).set(bearer(buyer.token))).body).toEqual({ lotId, favorited: true });
+    const favs = await http().get('/favorites').set(bearer(buyer.token));
+    expect(favs.status).toBe(200);
+    expect(favs.body.map((l: { id: string }) => l.id)).toContain(lotId);
+    expect(JSON.stringify(favs.body)).not.toContain('reservePrice');
+    expect((await http().delete(`/favorites/${lotId}`).set(bearer(buyer.token))).body).toEqual({ lotId, favorited: false });
+
+    // Fund buyer and buy now:
+    await db.transaction((tx) => topUp(tx, buyer.id, 100_000, 'seed:flow-buyer'));
+    const bought = await http().post(`/lots/${lotId}/buy-now`).set(bearer(buyer.token)).set('Idempotency-Key', 'buynow-flow-1');
+    expect(bought.status).toBe(201);
+    const saleId = bought.body.saleId as string;
+
+    // Stranger cannot view the sale:
+    expect((await http().get(`/sales/${saleId}`).set(bearer(stranger.token))).status).toBe(404);
+
+    // Pay for the sale (idempotent, invariant 7):
+    const paid = await http().post(`/sales/${saleId}/pay`).set(bearer(buyer.token)).set('Idempotency-Key', 'pay-flow-001').send({});
+    expect(paid.status).toBe(200);
+    expect(paid.headers['idempotency-replayed']).toBe('false');
+    expect(paid.body.status).toBe('paid');
+
+    const paidAgain = await http().post(`/sales/${saleId}/pay`).set(bearer(buyer.token)).set('Idempotency-Key', 'pay-flow-001').send({});
+    expect(paidAgain.status).toBe(200);
+    expect(paidAgain.headers['idempotency-replayed']).toBe('true');
+
+    const keyReused = await http().post(`/sales/${saleId}/pay`).set(bearer(buyer.token)).set('Idempotency-Key', 'pay-flow-001').send({ note: 'diff' });
+    expect(keyReused.status).toBe(422);
+    expect(keyReused.body.code).toBe('IDEMPOTENCY_KEY_REUSED');
+
+    // Seller sees pending payout in /lots/mine:
+    const mine = await http().get('/lots/mine').set(bearer(seller.token)).query({ status: 'paid' });
+    expect(mine.status).toBe(200);
+    expect(mine.body.pendingPayout).toBe(47_500);
+
+    // Buyer cannot ship, seller ships with tracking number:
+    expect((await http().post(`/sales/${saleId}/ship`).set(bearer(buyer.token)).send({ trackingNumber: 'NP-111' })).status).toBe(403);
+    const shipped = await http().post(`/sales/${saleId}/ship`).set(bearer(seller.token)).send({ trackingNumber: 'NP-111222333' });
+    expect(shipped.status).toBe(200);
+    expect(shipped.body.status).toBe('shipped');
+
+    // Buyer confirms receipt → payout to seller:
+    const confirmed = await http().post(`/sales/${saleId}/confirm`).set(bearer(buyer.token));
+    expect(confirmed.status).toBe(200);
+    expect(confirmed.body.status).toBe('completed');
+
+    const walletHistory = await http().get('/wallet/history').set(bearer(seller.token));
+    expect(walletHistory.status).toBe(200);
+    expect(walletHistory.body.payable).toBe(47_500);
+    expect(walletHistory.body.pendingPayout).toBe(0);
+  });
 });

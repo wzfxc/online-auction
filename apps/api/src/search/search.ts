@@ -12,6 +12,7 @@ export const searchQuerySchema = z.object({
   status: z.enum(['active', 'ended_unsold', 'awaiting_payment', 'paid', 'shipped', 'completed']).default('active'),
   minPrice: z.coerce.number().int().min(0).optional(),
   maxPrice: z.coerce.number().int().min(0).optional(),
+  noBids: z.enum(['true', 'false']).optional(),
   endingWithinMinutes: z.coerce.number().int().min(1).max(14 * 24 * 60).optional(),
   sort: z.enum(['relevance', 'price_asc', 'price_desc', 'ending_soon', 'newest']).default('relevance'),
   page: z.coerce.number().int().min(1).max(500).default(1),
@@ -44,6 +45,7 @@ export class SearchService {
     if (p.condition) filter.push(`condition = ${p.condition}`);
     if (p.minPrice !== undefined) filter.push(`currentPrice >= ${p.minPrice}`);
     if (p.maxPrice !== undefined) filter.push(`currentPrice <= ${p.maxPrice}`);
+    if (p.noBids === 'true') filter.push('bidCount = 0');
     if (p.endingWithinMinutes !== undefined) {
       const t = this.now().getTime();
       filter.push(`endsAt >= ${t} AND endsAt <= ${t + p.endingWithinMinutes * 60_000}`);

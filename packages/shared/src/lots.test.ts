@@ -19,6 +19,8 @@ describe('lot status table', () => {
     expect(canTransition('in_review', 'active', 'seller')).toBe(false);
     expect(canTransition('draft', 'active', 'seller')).toBe(false);
     expect(canTransition('removed', 'active', 'moderator')).toBe(false);
+    expect(canTransition('ended_unsold', 'draft', 'seller')).toBe(true);
+    expect(canTransition('ended_unsold', 'draft', 'buyer')).toBe(false);
   });
   it('has no way out of terminal statuses', () => {
     for (const s of ['completed', 'removed'] as const) {

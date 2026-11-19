@@ -72,6 +72,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/lots/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Seller lots filtered by status, plus pending and completed payout totals */
+        get: operations["listMyLots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lots/participating": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Public lots where the caller has placed bids */
+        get: operations["listParticipatingLots"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/lots/{id}": {
         parameters: {
             query?: never;
@@ -88,6 +122,23 @@ export interface paths {
         head?: never;
         /** Edit a draft, or append to the description of a published lot */
         patch: operations["updateLot"];
+        trace?: never;
+    };
+    "/lots/{id}/sale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current/latest sale for a lot (visible to the buyer or seller) */
+        get: operations["getLotSale"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/lots/{id}/submit": {
@@ -116,7 +167,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Return a rejected lot to draft */
+        /** Return a rejected or ended_unsold lot to draft */
         post: operations["reopenLot"];
         delete?: never;
         options?: never;
@@ -227,6 +278,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/wallet/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Own balance, held deposits, payouts and ledger operations */
+        get: operations["getWalletHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/wallet/top-ups": {
         parameters: {
             query?: never;
@@ -239,6 +307,160 @@ export interface paths {
         /** Start a top-up through the payment stub */
         post: operations["createTopUp"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Own sales as buyer or seller */
+        get: operations["listSales"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sales/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Sale details (buyer or seller of the lot only) */
+        get: operations["getSale"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sales/{id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pay for a won lot from the wallet (deposit is credited) */
+        post: operations["paySale"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sales/{id}/ship": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a paid sale as shipped with a tracking number (seller) */
+        post: operations["shipSale"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sales/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm receipt of a shipped order; triggers payout to the seller */
+        post: operations["confirmReceipt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** All categories (uk/en/pl) */
+        get: operations["listCategories"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** All cities (uk/en/pl) */
+        get: operations["listCities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Own favorite lots */
+        get: operations["listFavorites"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/favorites/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a lot to favorites (1h ending reminder) */
+        post: operations["addFavorite"];
+        /** Remove a lot from favorites */
+        delete: operations["removeFavorite"];
         options?: never;
         head?: never;
         patch?: never;
@@ -761,6 +983,178 @@ export interface operations {
             };
         };
     };
+    listMyLots: {
+        parameters: {
+            query?: {
+                status?: unknown | ("draft" | "in_review" | "rejected" | "active" | "ended_unsold" | "awaiting_payment" | "paid" | "shipped" | "completed" | "removed");
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** Format: uuid */
+                            sellerId: string;
+                            title: string;
+                            description: string;
+                            /** Format: uuid */
+                            categoryId: string;
+                            /** Format: uuid */
+                            cityId: string;
+                            /** @enum {string} */
+                            condition: "new" | "like_new" | "good" | "fair" | "poor";
+                            startPrice: number;
+                            buyNowPrice: number | null;
+                            durationDays: number;
+                            /** @enum {string} */
+                            status: "draft" | "in_review" | "rejected" | "active" | "ended_unsold" | "awaiting_payment" | "paid" | "shipped" | "completed" | "removed";
+                            currentPrice: number;
+                            bidCount: number;
+                            /** Format: date-time */
+                            endsAt: string | null;
+                            reserveMet: boolean | null;
+                            rejectionReason: string | null;
+                            reservePrice: number | null;
+                        }[];
+                        countsByStatus: {
+                            draft: number;
+                            in_review: number;
+                            rejected: number;
+                            active: number;
+                            ended_unsold: number;
+                            awaiting_payment: number;
+                            paid: number;
+                            shipped: number;
+                            completed: number;
+                            removed: number;
+                        };
+                        pendingPayout: number;
+                        paidOutTotal: number;
+                    };
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    listParticipatingLots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        sellerId: string;
+                        title: string;
+                        description: string;
+                        /** Format: uuid */
+                        categoryId: string;
+                        /** Format: uuid */
+                        cityId: string;
+                        /** @enum {string} */
+                        condition: "new" | "like_new" | "good" | "fair" | "poor";
+                        startPrice: number;
+                        buyNowPrice: number | null;
+                        durationDays: number;
+                        /** @enum {string} */
+                        status: "draft" | "in_review" | "rejected" | "active" | "ended_unsold" | "awaiting_payment" | "paid" | "shipped" | "completed" | "removed";
+                        currentPrice: number;
+                        bidCount: number;
+                        /** Format: date-time */
+                        endsAt: string | null;
+                        reserveMet: boolean | null;
+                        rejectionReason: string | null;
+                    }[];
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
     getLot: {
         parameters: {
             query?: never;
@@ -960,6 +1354,110 @@ export interface operations {
             };
             /** @description Rule violation (business-rule codes) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    getLotSale: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        lotId: string;
+                        lotTitle: string;
+                        /** Format: uuid */
+                        sellerId: string;
+                        /** Format: uuid */
+                        buyerId: string;
+                        buyerName: string;
+                        buyerEmail: string | null;
+                        attempt: number;
+                        price: number;
+                        fee: number;
+                        sellerPayout: number;
+                        depositHeld: number;
+                        /** @enum {string} */
+                        status: "awaiting_payment" | "paid" | "shipped" | "completed" | "defaulted" | "cancelled";
+                        /** Format: date-time */
+                        payDueAt: string;
+                        /** Format: date-time */
+                        paidAt: string | null;
+                        /** Format: date-time */
+                        shippedAt: string | null;
+                        trackingNumber: string | null;
+                        /** Format: date-time */
+                        confirmedAt: string | null;
+                        /** Format: date-time */
+                        paidOutAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                    } | null;
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1837,6 +2335,87 @@ export interface operations {
             };
         };
     };
+    getWalletHistory: {
+        parameters: {
+            query?: {
+                limit?: unknown | number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        available: number;
+                        held: number;
+                        total: number;
+                        payable: number;
+                        pendingPayout: number;
+                        items: {
+                            id: number;
+                            /** Format: uuid */
+                            txId: string;
+                            kind: string;
+                            /** @enum {string} */
+                            accountType: "user_available" | "user_hold" | "seller_payable";
+                            amount: number;
+                            /** Format: uuid */
+                            lotId: string | null;
+                            lotTitle: string | null;
+                            /** Format: date-time */
+                            createdAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
     createTopUp: {
         parameters: {
             query?: never;
@@ -1923,6 +2502,840 @@ export interface operations {
             };
             /** @description Rule violation (business-rule codes) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    listSales: {
+        parameters: {
+            query?: {
+                role?: unknown | ("buyer" | "seller");
+                status?: unknown | ("awaiting_payment" | "paid" | "shipped" | "completed" | "defaulted" | "cancelled");
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        lotId: string;
+                        lotTitle: string;
+                        /** Format: uuid */
+                        sellerId: string;
+                        /** Format: uuid */
+                        buyerId: string;
+                        buyerName: string;
+                        buyerEmail: string | null;
+                        attempt: number;
+                        price: number;
+                        fee: number;
+                        sellerPayout: number;
+                        depositHeld: number;
+                        /** @enum {string} */
+                        status: "awaiting_payment" | "paid" | "shipped" | "completed" | "defaulted" | "cancelled";
+                        /** Format: date-time */
+                        payDueAt: string;
+                        /** Format: date-time */
+                        paidAt: string | null;
+                        /** Format: date-time */
+                        shippedAt: string | null;
+                        trackingNumber: string | null;
+                        /** Format: date-time */
+                        confirmedAt: string | null;
+                        /** Format: date-time */
+                        paidOutAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                    }[];
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    getSale: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        lotId: string;
+                        lotTitle: string;
+                        /** Format: uuid */
+                        sellerId: string;
+                        /** Format: uuid */
+                        buyerId: string;
+                        buyerName: string;
+                        buyerEmail: string | null;
+                        attempt: number;
+                        price: number;
+                        fee: number;
+                        sellerPayout: number;
+                        depositHeld: number;
+                        /** @enum {string} */
+                        status: "awaiting_payment" | "paid" | "shipped" | "completed" | "defaulted" | "cancelled";
+                        /** Format: date-time */
+                        payDueAt: string;
+                        /** Format: date-time */
+                        paidAt: string | null;
+                        /** Format: date-time */
+                        shippedAt: string | null;
+                        trackingNumber: string | null;
+                        /** Format: date-time */
+                        confirmedAt: string | null;
+                        /** Format: date-time */
+                        paidOutAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    paySale: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Unique key per logical operation (8–128 chars) */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sale paid; deposit credited and balance moved to escrow */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        lotId: string;
+                        lotTitle: string;
+                        /** Format: uuid */
+                        sellerId: string;
+                        /** Format: uuid */
+                        buyerId: string;
+                        buyerName: string;
+                        buyerEmail: string | null;
+                        attempt: number;
+                        price: number;
+                        fee: number;
+                        sellerPayout: number;
+                        depositHeld: number;
+                        /** @enum {string} */
+                        status: "awaiting_payment" | "paid" | "shipped" | "completed" | "defaulted" | "cancelled";
+                        /** Format: date-time */
+                        payDueAt: string;
+                        /** Format: date-time */
+                        paidAt: string | null;
+                        /** Format: date-time */
+                        shippedAt: string | null;
+                        trackingNumber: string | null;
+                        /** Format: date-time */
+                        confirmedAt: string | null;
+                        /** Format: date-time */
+                        paidOutAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description State conflict (business-rule codes) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Rule violation (business-rule codes) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    shipSale: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    trackingNumber: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        lotId: string;
+                        lotTitle: string;
+                        /** Format: uuid */
+                        sellerId: string;
+                        /** Format: uuid */
+                        buyerId: string;
+                        buyerName: string;
+                        buyerEmail: string | null;
+                        attempt: number;
+                        price: number;
+                        fee: number;
+                        sellerPayout: number;
+                        depositHeld: number;
+                        /** @enum {string} */
+                        status: "awaiting_payment" | "paid" | "shipped" | "completed" | "defaulted" | "cancelled";
+                        /** Format: date-time */
+                        payDueAt: string;
+                        /** Format: date-time */
+                        paidAt: string | null;
+                        /** Format: date-time */
+                        shippedAt: string | null;
+                        trackingNumber: string | null;
+                        /** Format: date-time */
+                        confirmedAt: string | null;
+                        /** Format: date-time */
+                        paidOutAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description State conflict (business-rule codes) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    confirmReceipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        lotId: string;
+                        lotTitle: string;
+                        /** Format: uuid */
+                        sellerId: string;
+                        /** Format: uuid */
+                        buyerId: string;
+                        buyerName: string;
+                        buyerEmail: string | null;
+                        attempt: number;
+                        price: number;
+                        fee: number;
+                        sellerPayout: number;
+                        depositHeld: number;
+                        /** @enum {string} */
+                        status: "awaiting_payment" | "paid" | "shipped" | "completed" | "defaulted" | "cancelled";
+                        /** Format: date-time */
+                        payDueAt: string;
+                        /** Format: date-time */
+                        paidAt: string | null;
+                        /** Format: date-time */
+                        shippedAt: string | null;
+                        trackingNumber: string | null;
+                        /** Format: date-time */
+                        confirmedAt: string | null;
+                        /** Format: date-time */
+                        paidOutAt: string | null;
+                        /** Format: date-time */
+                        createdAt: string;
+                    };
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description State conflict (business-rule codes) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    listCategories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        slug: string;
+                        nameUk: string;
+                        nameEn: string;
+                        namePl: string;
+                    }[];
+                };
+            };
+        };
+    };
+    listCities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        slug: string;
+                        nameUk: string;
+                        nameEn: string;
+                        namePl: string;
+                    }[];
+                };
+            };
+        };
+    };
+    listFavorites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** Format: uuid */
+                        sellerId: string;
+                        title: string;
+                        description: string;
+                        /** Format: uuid */
+                        categoryId: string;
+                        /** Format: uuid */
+                        cityId: string;
+                        /** @enum {string} */
+                        condition: "new" | "like_new" | "good" | "fair" | "poor";
+                        startPrice: number;
+                        buyNowPrice: number | null;
+                        durationDays: number;
+                        /** @enum {string} */
+                        status: "draft" | "in_review" | "rejected" | "active" | "ended_unsold" | "awaiting_payment" | "paid" | "shipped" | "completed" | "removed";
+                        currentPrice: number;
+                        bidCount: number;
+                        /** Format: date-time */
+                        endsAt: string | null;
+                        reserveMet: boolean | null;
+                        rejectionReason: string | null;
+                    }[];
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    addFavorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        lotId: string;
+                        favorited: boolean;
+                    };
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    removeFavorite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        lotId: string;
+                        favorited: boolean;
+                    };
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not allowed (FORBIDDEN and role/ownership codes) */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2530,6 +3943,7 @@ export interface operations {
                 status?: "active" | "ended_unsold" | "awaiting_payment" | "paid" | "shipped" | "completed";
                 minPrice?: unknown | number;
                 maxPrice?: unknown | number;
+                noBids?: unknown | ("true" | "false");
                 endingWithinMinutes?: unknown | number;
                 sort?: "relevance" | "price_asc" | "price_desc" | "ending_soon" | "newest";
                 page?: number;

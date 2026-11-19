@@ -1,16 +1,19 @@
-import { Body, Controller, Get, Headers, Inject, Post, Res } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Inject, Post, Query, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import type { z } from 'zod';
 import { Errors } from '../common/errors/app-error.js';
 import type { Db } from '../db/client.js';
-import { getBalance } from '../ledger/wallet.js';
+import { getBalance, getWalletHistory, type WalletHistoryDto } from '../ledger/wallet.js';
 import type { Principal } from '../lots/lots.js';
 import { PaymentService } from '../payments/payments.js';
 import { CurrentUser, Roles } from './auth.js';
-import { ApiErrors, IdempotencyKeyHeader, ZBody, ZResponse } from './openapi-helpers.js';
+import { ApiErrors, IdempotencyKeyHeader, ZBody, ZQuery, ZResponse } from './openapi-helpers.js';
 import { requireIdempotencyKey } from './pipes.js';
-import { balanceSchema, topUpRequestSchema, topUpResponseSchema } from './schemas.js';
+import {
+  balanceSchema, topUpRequestSchema, topUpResponseSchema,
+  walletHistoryQuerySchema, walletHistorySchema,
+} from './schemas.js';
 import { DB } from './tokens.js';
 
 @ApiTags('wallet')
@@ -30,6 +33,17 @@ export class WalletController {
   @ApiErrors(401, 403)
   getWallet(@CurrentUser() user: Principal | null): Promise<z.infer<typeof balanceSchema>> {
     return this.db.transaction((tx) => getBalance(tx, user!.id));
+  }
+
+  @Get('history')
+  @ApiOperation({ operationId: 'getWalletHistory', summary: 'Own balance, held deposits, payouts and ledger operations' })
+  @ZQuery(walletHistoryQuerySchema)
+  @ZResponse(200, walletHistorySchema)
+  @ApiErrors(400, 401, 403)
+  history(@CurrentUser() user: Principal | null, @Query() query: unknown): Promise<WalletHistoryDto> {
+    const q = walletHistoryQuerySchema.safeParse(query);
+    if (!q.success) throw Errors.validation(q.error.issues);
+    return getWalletHistory(this.db, user!.id, q.data.limit);
   }
 
   @Post('top-ups')

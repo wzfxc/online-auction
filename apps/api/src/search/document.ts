@@ -48,7 +48,7 @@ export function toSearchDoc(lot: LotRow): LotSearchDoc {
 
 export const INDEX_SETTINGS: Settings = {
   searchableAttributes: ['title', 'description'],
-  filterableAttributes: ['categoryId', 'cityId', 'condition', 'status', 'currentPrice', 'endsAt', 'reserveMet'],
+  filterableAttributes: ['categoryId', 'cityId', 'condition', 'status', 'currentPrice', 'bidCount', 'endsAt', 'reserveMet'],
   sortableAttributes: ['currentPrice', 'endsAt', 'bidCount', 'createdAt'],
   pagination: { maxTotalHits: 10_000 },
 };

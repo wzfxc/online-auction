@@ -1,13 +1,15 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Inject, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { appendDescriptionSchema, createLotSchema, rejectLotSchema, updateLotSchema } from '@auction/shared';
-import type { LotDto, OwnLotDto, Principal } from '../lots/lots.js';
+import { Errors } from '../common/errors/app-error.js';
+import type { LotDto, MyLotsResultDto, OwnLotDto, Principal } from '../lots/lots.js';
 import { LotService } from '../lots/lots.js';
+import { SalesService, type SaleDto } from '../sales/sales.js';
 import { CurrentUser, Public, Roles } from './auth.js';
-import { ApiErrors, ZBody, ZResponse } from './openapi-helpers.js';
+import { ApiErrors, ZBody, ZQuery, ZResponse } from './openapi-helpers.js';
 import { UuidPipe } from './pipes.js';
-import { lotEventSchema, lotSchema, ownLotSchema } from './schemas.js';
+import { lotEventSchema, lotSchema, myLotsQuerySchema, myLotsResultSchema, ownLotSchema, saleSchema } from './schemas.js';
 
 const id = 'id';
 
@@ -15,7 +17,10 @@ const id = 'id';
 @ApiBearerAuth()
 @Controller('lots')
 export class LotsController {
-  constructor(@Inject(LotService) private readonly lots: LotService) {}
+  constructor(
+    @Inject(LotService) private readonly lots: LotService,
+    @Inject(SalesService) private readonly sales: SalesService,
+  ) {}
 
   @Roles('seller')
   @Post()
@@ -27,6 +32,27 @@ export class LotsController {
     return this.lots.create(user!, body);
   }
 
+  @Roles('seller')
+  @Get('mine')
+  @ApiOperation({ operationId: 'listMyLots', summary: 'Seller lots filtered by status, plus pending and completed payout totals' })
+  @ZQuery(myLotsQuerySchema)
+  @ZResponse(200, myLotsResultSchema)
+  @ApiErrors(400, 401, 403)
+  mine(@CurrentUser() user: Principal | null, @Query() query: unknown): Promise<MyLotsResultDto> {
+    const q = myLotsQuerySchema.safeParse(query);
+    if (!q.success) throw Errors.validation(q.error.issues);
+    return this.lots.listMine(user!, q.data.status);
+  }
+
+  @Roles('buyer', 'seller')
+  @Get('participating')
+  @ApiOperation({ operationId: 'listParticipatingLots', summary: 'Public lots where the caller has placed bids' })
+  @ZResponse(200, z.array(lotSchema))
+  @ApiErrors(401, 403)
+  participating(@CurrentUser() user: Principal | null): Promise<LotDto[]> {
+    return this.lots.listParticipating(user!);
+  }
+
   @Public()
   @Get(':id')
   @ApiOperation({ operationId: 'getLot', summary: 'Lot details; unpublished lots only for owner/moderators' })
@@ -34,6 +60,15 @@ export class LotsController {
   @ApiErrors(400, 404)
   get(@CurrentUser() user: Principal | null, @Param(id, UuidPipe) lotId: string): Promise<LotDto> {
     return this.lots.get(user, lotId);
+  }
+
+  @Roles('buyer', 'seller')
+  @Get(':id/sale')
+  @ApiOperation({ operationId: 'getLotSale', summary: 'Current/latest sale for a lot (visible to the buyer or seller)' })
+  @ZResponse(200, saleSchema.nullable())
+  @ApiErrors(400, 401, 403, 404)
+  getSale(@CurrentUser() user: Principal | null, @Param(id, UuidPipe) lotId: string): Promise<SaleDto | null> {
+    return this.sales.getLotSale(user!, lotId);
   }
 
   @Roles('seller')
@@ -59,7 +94,7 @@ export class LotsController {
   @Roles('seller')
   @Post(':id/reopen')
   @HttpCode(200)
-  @ApiOperation({ operationId: 'reopenLot', summary: 'Return a rejected lot to draft' })
+  @ApiOperation({ operationId: 'reopenLot', summary: 'Return a rejected or ended_unsold lot to draft' })
   @ZResponse(200, ownLotSchema)
   @ApiErrors(400, 401, 403, 404, 409)
   reopen(@CurrentUser() user: Principal | null, @Param(id, UuidPipe) lotId: string): Promise<OwnLotDto> {

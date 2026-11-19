@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ITEM_CONDITIONS, LOT_STATUSES } from '@auction/shared';
+import { ITEM_CONDITIONS, LOT_STATUSES, SALE_STATUSES } from '@auction/shared';
 
 /**
  * Response shapes for OpenAPI. The generated client takes its types from these, so they must mirror
@@ -103,4 +103,82 @@ export const stubSessionSchema = z.object({
   paymentId: z.string().uuid(),
   amount: kopecks,
   status: z.enum(['pending', 'succeeded', 'failed', 'expired']),
+});
+
+export const categorySchema = z.object({
+  id: z.string().uuid(),
+  slug: z.string(),
+  nameUk: z.string(),
+  nameEn: z.string(),
+  namePl: z.string(),
+});
+
+export const citySchema = categorySchema;
+
+export const myLotsQuerySchema = z.object({
+  status: z.enum(LOT_STATUSES).optional(),
+});
+
+export const myLotsResultSchema = z.object({
+  items: z.array(ownLotSchema),
+  countsByStatus: z.record(z.enum(LOT_STATUSES), z.number().int()),
+  pendingPayout: kopecks,
+  paidOutTotal: kopecks,
+});
+
+export const favoriteStatusSchema = z.object({
+  lotId: z.string().uuid(),
+  favorited: z.boolean(),
+});
+
+export const walletHistoryQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
+export const walletHistoryItemSchema = z.object({
+  id: z.number().int(),
+  txId: z.string().uuid(),
+  kind: z.string(),
+  accountType: z.enum(['user_available', 'user_hold', 'seller_payable']),
+  amount: kopecks,
+  lotId: z.string().uuid().nullable(),
+  lotTitle: z.string().nullable(),
+  createdAt: z.string().datetime(),
+});
+
+export const walletHistorySchema = z.object({
+  available: kopecks,
+  held: kopecks,
+  total: kopecks,
+  payable: kopecks,
+  pendingPayout: kopecks,
+  items: z.array(walletHistoryItemSchema),
+});
+
+export const saleSchema = z.object({
+  id: z.string().uuid(),
+  lotId: z.string().uuid(),
+  lotTitle: z.string(),
+  sellerId: z.string().uuid(),
+  buyerId: z.string().uuid(),
+  buyerName: z.string(),
+  buyerEmail: z.string().nullable(),
+  attempt: z.number().int(),
+  price: kopecks,
+  fee: kopecks,
+  sellerPayout: kopecks,
+  depositHeld: kopecks,
+  status: z.enum(SALE_STATUSES),
+  payDueAt: z.string().datetime(),
+  paidAt: z.string().datetime().nullable(),
+  shippedAt: z.string().datetime().nullable(),
+  trackingNumber: z.string().nullable(),
+  confirmedAt: z.string().datetime().nullable(),
+  paidOutAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+});
+
+export const salesQuerySchema = z.object({
+  role: z.enum(['buyer', 'seller']).optional(),
+  status: z.enum(SALE_STATUSES).optional(),
 });

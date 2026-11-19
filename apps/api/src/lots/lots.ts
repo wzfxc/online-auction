@@ -1,13 +1,13 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
-  appendDescriptionSchema, canTransition, createLotSchema, rejectLotSchema, updateLotSchema,
+  appendDescriptionSchema, canTransition, createLotSchema, LOT_STATUSES, rejectLotSchema, updateLotSchema,
   type LotActor, type LotStatus,
 } from '@auction/shared';
 import type { Clock } from '../common/clock/clock.js';
 import { Errors } from '../common/errors/app-error.js';
 import type { Db } from '../db/client.js';
-import { lotEvents, lots } from '../db/schema.js';
-import type { Tx } from '../ledger/ledger.js';
+import { bidderMaxes, bids, categories, cities, deposits, favorites, lotEvents, lots, sales } from '../db/schema.js';
+import { balanceOf, type Tx } from '../ledger/ledger.js';
 
 export type LotRow = typeof lots.$inferSelect;
 export type Role = 'buyer' | 'seller' | 'moderator' | 'finance';
@@ -69,6 +69,31 @@ export function toOwnLotDto(lot: LotRow): OwnLotDto {
   return { ...toLotDto(lot, { id: lot.sellerId, role: 'seller' }), reservePrice: lot.reservePrice };
 }
 
+export interface MyLotsResultDto {
+  items: OwnLotDto[];
+  countsByStatus: Record<LotStatus, number>;
+  /** Sum of (price - fee) in escrow for paid or shipped sales of this seller awaiting buyer confirmation. */
+  pendingPayout: number;
+  /** Total balance credited to seller_payable (completed payouts + forfeited deposits). */
+  paidOutTotal: number;
+}
+
+export interface CategoryDto {
+  id: string;
+  slug: string;
+  nameUk: string;
+  nameEn: string;
+  namePl: string;
+}
+
+export interface CityDto {
+  id: string;
+  slug: string;
+  nameUk: string;
+  nameEn: string;
+  namePl: string;
+}
+
 const PUBLIC_STATUSES: readonly LotStatus[] = [
   'active', 'ended_unsold', 'awaiting_payment', 'paid', 'shipped', 'completed',
 ];
@@ -116,8 +141,25 @@ export class LotService {
     return this.ownerTransition(user, lotId, 'in_review', 'submitted');
   }
 
+  /** Reopens a rejected or ended_unsold lot back to draft so the seller can revise and resubmit it. */
   reviseRejected(user: Principal, lotId: string): Promise<OwnLotDto> {
-    return this.ownerTransition(user, lotId, 'draft', 'reopened');
+    return this.db.transaction(async (tx) => {
+      const lot = await this.lockOwn(tx, user, lotId);
+      this.assertTransition(lot.status, 'draft', 'seller');
+      const now = this.clock.now();
+      await tx.delete(bidderMaxes).where(eq(bidderMaxes.lotId, lotId));
+      await tx.delete(bids).where(eq(bids.lotId, lotId));
+      await tx.delete(deposits).where(and(eq(deposits.lotId, lotId), eq(deposits.amount, 0)));
+      await tx.delete(sales).where(and(eq(sales.lotId, lotId), inArray(sales.status, ['defaulted', 'cancelled'])));
+      await tx.update(favorites).set({ reminderSentAt: null }).where(eq(favorites.lotId, lotId));
+
+      const [row] = await tx.update(lots).set({
+        status: 'draft', currentPrice: lot.startPrice, bidCount: 0, leaderId: null,
+        endsAt: null, rejectionReason: null, updatedAt: now,
+      }).where(eq(lots.id, lotId)).returning();
+      await this.log(tx, lotId, user.id, 'reopened', { from: lot.status });
+      return toOwnLotDto(row!);
+    });
   }
 
   approve(moderator: Principal, lotId: string): Promise<LotDto> {
@@ -141,6 +183,83 @@ export class LotService {
     const privileged = viewer?.id === lot.sellerId || viewer?.role === 'moderator';
     if (!privileged && !PUBLIC_STATUSES.includes(lot.status)) throw Errors.notFound('Lot');
     return toLotDto(lot, viewer);
+  }
+
+  /** Seller's own lots with status breakdown and pending/completed payout totals. */
+  async listMine(user: Principal, status?: LotStatus): Promise<MyLotsResultDto> {
+    if (user.role !== 'seller') throw Errors.forbidden('Seller role required');
+    const allRows = await this.db.select().from(lots)
+      .where(eq(lots.sellerId, user.id))
+      .orderBy(desc(lots.createdAt), desc(lots.id));
+
+    const countsByStatus = Object.fromEntries(LOT_STATUSES.map((s) => [s, 0])) as Record<LotStatus, number>;
+    for (const r of allRows) countsByStatus[r.status] = (countsByStatus[r.status] ?? 0) + 1;
+    const filtered = status ? allRows.filter((r) => r.status === status) : allRows;
+
+    const [pendingRow] = await this.db
+      .select({ pending: sql<number>`coalesce(sum(${sales.price} - ${sales.fee}), 0)::bigint` })
+      .from(sales)
+      .innerJoin(lots, eq(lots.id, sales.lotId))
+      .where(and(eq(lots.sellerId, user.id), inArray(sales.status, ['paid', 'shipped'])));
+
+    const paidOutTotal = await this.db.transaction((tx) =>
+      balanceOf(tx, { type: 'seller_payable', userId: user.id }));
+
+    return {
+      items: filtered.map(toOwnLotDto),
+      countsByStatus,
+      pendingPayout: Number(pendingRow?.pending ?? 0),
+      paidOutTotal,
+    };
+  }
+
+  /** Public lots where the user has placed at least one bid. */
+  async listParticipating(user: Principal): Promise<LotDto[]> {
+    if (user.role !== 'buyer' && user.role !== 'seller') throw Errors.forbidden('Role cannot bid');
+    const lotIds = await this.db.selectDistinct({ lotId: bids.lotId }).from(bids).where(eq(bids.userId, user.id));
+    if (lotIds.length === 0) return [];
+    const rows = await this.db.select().from(lots)
+      .where(and(
+        inArray(lots.id, lotIds.map((l) => l.lotId)),
+        inArray(lots.status, [...PUBLIC_STATUSES]),
+      ))
+      .orderBy(desc(lots.updatedAt), desc(lots.id));
+    return rows.map((r) => toLotDto(r, user));
+  }
+
+  async listFavorites(user: Principal): Promise<LotDto[]> {
+    if (user.role !== 'buyer' && user.role !== 'seller') throw Errors.forbidden('Role cannot use favorites');
+    const rows = await this.db
+      .select({ lot: lots })
+      .from(favorites)
+      .innerJoin(lots, eq(lots.id, favorites.lotId))
+      .where(and(eq(favorites.userId, user.id), inArray(lots.status, [...PUBLIC_STATUSES])))
+      .orderBy(desc(favorites.createdAt), desc(lots.id));
+    return rows.map((r) => toLotDto(r.lot, user));
+  }
+
+  async addFavorite(user: Principal, lotId: string): Promise<{ lotId: string; favorited: boolean }> {
+    if (user.role !== 'buyer' && user.role !== 'seller') throw Errors.forbidden('Role cannot use favorites');
+    const [lot] = await this.db.select().from(lots).where(eq(lots.id, lotId));
+    if (!lot || !PUBLIC_STATUSES.includes(lot.status)) throw Errors.notFound('Lot');
+    await this.db.insert(favorites).values({ userId: user.id, lotId, createdAt: this.clock.now() }).onConflictDoNothing();
+    return { lotId, favorited: true };
+  }
+
+  async removeFavorite(user: Principal, lotId: string): Promise<{ lotId: string; favorited: boolean }> {
+    if (user.role !== 'buyer' && user.role !== 'seller') throw Errors.forbidden('Role cannot use favorites');
+    await this.db.delete(favorites).where(and(eq(favorites.userId, user.id), eq(favorites.lotId, lotId)));
+    return { lotId, favorited: false };
+  }
+
+  async listCategories(): Promise<CategoryDto[]> {
+    const rows = await this.db.select().from(categories).orderBy(asc(categories.slug));
+    return rows.map((c) => ({ id: c.id, slug: c.slug, nameUk: c.nameUk, nameEn: c.nameEn, namePl: c.namePl }));
+  }
+
+  async listCities(): Promise<CityDto[]> {
+    const rows = await this.db.select().from(cities).orderBy(asc(cities.slug));
+    return rows.map((c) => ({ id: c.id, slug: c.slug, nameUk: c.nameUk, nameEn: c.nameEn, namePl: c.namePl }));
   }
 
   /** Lot history: seller and moderators only. */
