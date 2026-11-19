@@ -1,6 +1,8 @@
 import { writeFileSync } from 'node:fs';
+import { Meilisearch } from 'meilisearch';
 import { SystemClock } from '../src/common/clock/clock.js';
 import { createDb } from '../src/db/client.js';
+import { MemoryStorage } from '../src/media/storage.js';
 import { buildOpenApi, createApp } from '../src/http/setup.js';
 import { StubPaymentProvider } from '../src/payments-stub/provider.js';
 
@@ -12,7 +14,7 @@ const provider = new StubPaymentProvider({
   deliver: async () => undefined, schedule: () => undefined,
 });
 const app = await createApp(
-  { db, clock, paymentProvider: provider, config: { jwtSecret: 'x', tokenTtlSeconds: 1, webhookSecret: 'x' } },
+  { db, clock, paymentProvider: provider, storage: new MemoryStorage(), meili: new Meilisearch({ host: 'http://127.0.0.1:1' }), config: { jwtSecret: 'x', tokenTtlSeconds: 1, webhookSecret: 'x' } },
   { logger: false },
 );
 await app.init();

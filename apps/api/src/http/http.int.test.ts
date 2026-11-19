@@ -7,7 +7,10 @@ import { FakeClock } from '../common/clock/clock.js';
 import { createDb, runMigrations } from '../db/client.js';
 import { categories, cities, users } from '../db/schema.js';
 import { topUp } from '../ledger/wallet.js';
+import { signWebhook } from '../payments-stub/signature.js';
 import { StubPaymentProvider } from '../payments-stub/provider.js';
+import { Meilisearch } from 'meilisearch';
+import { MemoryStorage } from '../media/storage.js';
 import { createApp } from './setup.js';
 
 const { pool, db } = createDb(process.env.TEST_DATABASE_URL);
@@ -44,7 +47,7 @@ beforeAll(async () => {
     deliver: async () => undefined, schedule: () => undefined,
   });
   app = await createApp(
-    { db, clock, paymentProvider: provider, config: { jwtSecret: 'x'.repeat(32), tokenTtlSeconds: 3600, webhookSecret: 's' } },
+    { db, clock, paymentProvider: provider, storage: new MemoryStorage(), meili: new Meilisearch({ host: 'http://127.0.0.1:1' }), config: { jwtSecret: 'x'.repeat(32), tokenTtlSeconds: 3600, webhookSecret: 's' } },
     { logger: false },
   );
   await app.init();
@@ -150,5 +153,41 @@ describe('lot → bid flow over HTTP', () => {
     expect(history.status).toBe(200);
     expect(history.body.items).toHaveLength(1);
     expect(history.body.items[0].bidder).toContain('***');
+  });
+});
+
+describe('remaining endpoints', () => {
+  it('guards moderation and notifications, and keeps search outages in the error envelope', async () => {
+    const buyer = await register('buyer', 'rest-buyer@t.test');
+    expect((await http().post('/moderation/claim').set(bearer(buyer.token))).status).toBe(403);
+    expect((await http().get('/notifications')).status).toBe(401);
+    const list = await http().get('/notifications').set(bearer(buyer.token));
+    expect(list.status).toBe(200);
+    expect(list.body).toEqual([]);
+    const read = await http().post('/notifications/read').set(bearer(buyer.token)).send({});
+    expect(read.body).toEqual({ updated: 0 });
+    expect((await http().post('/notifications/read').set(bearer(buyer.token)).send({ ids: ['x'] })).status).toBe(400);
+
+    const search = await http().get('/search').query({ q: 'canon' });
+    expect(search.status).toBe(503);
+    expect(search.body.code).toBe('SEARCH_UNAVAILABLE');
+    expect((await http().get('/search').query({ page: '0' })).status).toBe(400);
+  });
+
+  it('accepts a signed payment webhook exactly once and rejects a bad signature', async () => {
+    const buyer = await register('buyer', 'pay-buyer@t.test');
+    const top = await http().post('/wallet/top-ups').set(bearer(buyer.token)).set('Idempotency-Key', 'topup-key-01').send({ amount: 20_000 });
+    expect(top.status).toBe(201);
+    const body = JSON.stringify({ providerEventId: 'evt_1', paymentId: top.body.paymentId, type: 'payment.succeeded' });
+
+    const bad = await http().post('/payments/webhook').set('Content-Type', 'application/json').set('x-payment-signature', 'nope').send(body);
+    expect(bad.status).toBe(401);
+    const sig = signWebhook(body, 's');
+    const ok = await http().post('/payments/webhook').set('Content-Type', 'application/json').set('x-payment-signature', sig).send(body);
+    expect(ok.body).toEqual({ duplicate: false });
+    const dup = await http().post('/payments/webhook').set('Content-Type', 'application/json').set('x-payment-signature', sig).send(body);
+    expect(dup.body).toEqual({ duplicate: true });
+    const wallet = await http().get('/wallet').set(bearer(buyer.token));
+    expect(wallet.body).toEqual({ available: 20_000, held: 0 });
   });
 });

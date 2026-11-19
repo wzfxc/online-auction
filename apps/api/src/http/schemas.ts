@@ -76,3 +76,26 @@ export const balanceSchema = z.object({ available: kopecks, held: kopecks });
 
 export const topUpRequestSchema = z.object({ amount: z.number().int().min(1000).max(100_000_000) });
 export const topUpResponseSchema = z.object({ paymentId: z.string().uuid(), amount: kopecks, payUrl: z.string() });
+
+export const photoSchema = z.object({
+  id: z.string().uuid(), position: z.number().int(), status: z.enum(['pending_upload', 'uploaded', 'processed']),
+});
+export const photoUploadSchema = z.object({
+  photoId: z.string().uuid(), position: z.number().int(),
+  upload: z.object({ url: z.string(), fields: z.record(z.string()) }),
+});
+export const photoViewSchema = z.object({ url: z.string(), expiresInSeconds: z.number().int() });
+export const photoViewQuerySchema = z.object({ variant: z.enum(['original', 'preview']).default('preview') });
+
+export const notificationSchema = z.object({
+  id: z.string().uuid(), type: z.string(), payload: z.unknown(), read: z.boolean(), createdAt: z.string().datetime(),
+});
+export const notificationsQuerySchema = z.object({
+  unreadOnly: z.enum(['true', 'false']).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+export const markReadSchema = z.object({ ids: z.array(z.string().uuid()).max(100).optional() });
+export const markReadResultSchema = z.object({ updated: z.number().int() });
+
+export const webhookAckSchema = z.object({ duplicate: z.boolean() });
+export const payerActionSchema = z.object({ action: z.enum(['success', 'fail', 'close']) });
