@@ -6,7 +6,7 @@
 | 0 | Аудит, план, CLAUDE.md, progress.md | ✅ |
 | 1 | Каркас монорепо + CI | ✅ |
 | 2 | Docker compose, інфраструктура | ✅ (сервіси застосунку не збиралися: це заглушки) |
-| 3 | Схема БД, міграції | ⬜ |
+| 3 | Схема БД, міграції | ✅ |
 | 4 | Гроші/проводки/wallet/Clock/помилки/auth/idempotency | ⬜ |
 | 5 | Платіжна заглушка | ⬜ |
 | 6 | Лоти | ⬜ |
@@ -82,6 +82,9 @@
 | D13 | Валюта | UAH, `bigint` копійки |
 | D14 | Втрата Redis | Postgres — джерело правди; sweeper по БД; BullMQ лише прискорює |
 | D15 | Образ MinIO | `minio/minio` недоступний (pull denied на Docker Hub і quay), використано `chainguard/minio`; healthcheck немає (немає shell), клієнти ретраять підключення |
+| D16 | Порт Postgres | На Windows порт 5432 заблоковано, хост-порт Postgres у compose — 5433; у URL використовуємо `127.0.0.1` (localhost резолвиться в IPv6, а Docker слухає лише IPv4) |
+| D17 | Цілісність ledger | Баланс рахунку оновлює тригер; сума проводок транзакції = 0 перевіряється deferred constraint trigger при commit; `ledger_entries` append-only; `user_available`/`user_hold` не можуть піти в мінус (CHECK) |
+| D18 | Другий шанс у БД | Кожна спроба оплати — рядок `sales` (attempt); часткові унікальні індекси: один `awaiting_payment` на лот, одна оплачена спроба на лот |
 
 ## Журнал комітів
 | Коміт | Опис |
@@ -90,3 +93,4 @@
 | (етап 1) | `chore: monorepo scaffold, lint rules, CI, money rules in shared` |
 | (етап 2) | `chore: docker compose, nginx, .env.example` |
 | (етап 2, fix) | `fix: bind published compose ports to loopback` |
+| (етап 3) | `feat(db): drizzle schema, migrations, ledger triggers` |
