@@ -77,7 +77,10 @@ export class SearchIndexer {
   }
 
   /** Writes the current state of the given lots: public ones are upserted, everything else is removed. */
-  private async sync(db: Pick<Db, 'select'>, ids: string[]): Promise<void> {
+  private async sync(db: Pick<Db, 'select' | 'execute'>, ids: string[]): Promise<void> {
+    // Serialise indexing per lot until the surrounding transaction ends: a worker that read an older state can
+    // no longer overwrite (or resurrect) a lot after another worker wrote a newer one. Sorted order avoids deadlocks.
+    for (const id of [...ids].sort()) await db.execute(sql`select pg_advisory_xact_lock(hashtextextended(${'search:' + id}, 0))`);
     const rows = await db.select().from(lots).where(inArray(lots.id, ids));
     const index = this.meili.index<LotSearchDoc>(this.indexName);
     const publicRows = rows.filter((r) => SEARCHABLE_STATUSES.includes(r.status));
