@@ -9,6 +9,36 @@ import { ApiErrors, ZBody, ZQuery, ZResponse, ZUuidParam } from './openapi-helpe
 import { UuidPipe } from './pipes.js';
 import { photoSchema, photoUploadSchema, photoViewQuerySchema, photoViewSchema } from './schemas.js';
 
+const thumbnailsQuerySchema = z.object({
+  ids: z.string().trim().min(1).max(4000),
+});
+const thumbnailsResponseSchema = z.object({
+  thumbnails: z.record(z.string()),
+});
+const uuidSchema = z.string().uuid();
+
+@ApiTags('media')
+@Controller('media')
+export class ThumbnailsController {
+  constructor(@Inject(MediaService) private readonly media: MediaService) {}
+
+  @Public()
+  @Get('thumbnails')
+  @ApiOperation({ operationId: 'getLotThumbnails', summary: 'Batch signed preview URLs for public catalog lots' })
+  @ZQuery(thumbnailsQuerySchema)
+  @ZResponse(200, thumbnailsResponseSchema)
+  @ApiErrors(400)
+  async thumbnails(@Query() query: unknown): Promise<z.infer<typeof thumbnailsResponseSchema>> {
+    const q = thumbnailsQuerySchema.safeParse(query);
+    if (!q.success) throw Errors.validation(q.error.issues);
+    const ids = q.data.ids.split(',').map((s) => s.trim()).filter(Boolean);
+    if (ids.length === 0 || ids.length > 100 || ids.some((id) => !uuidSchema.safeParse(id).success)) {
+      throw Errors.validation([{ path: ['ids'], message: 'Expected 1 to 100 comma-separated UUIDs' }]);
+    }
+    return { thumbnails: await this.media.getThumbnails(ids) };
+  }
+}
+
 @ApiTags('media')
 @ApiBearerAuth()
 @Controller('lots/:id/photos')

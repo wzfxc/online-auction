@@ -47,6 +47,7 @@ const ERROR_TEXT: Record<number, string> = {
   404: 'Not found (NOT_FOUND)',
   409: 'State conflict (business-rule codes)',
   422: 'Rule violation (business-rule codes)',
+  429: 'Too many requests (RATE_LIMIT_EXCEEDED)',
 };
 
 /** Documents the single error envelope `{code, message, details}` for the listed statuses (invariant 15). */

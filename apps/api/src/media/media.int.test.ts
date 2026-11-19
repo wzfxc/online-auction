@@ -141,15 +141,65 @@ describe('photo processing', () => {
     expect((await sharp(storage.objects.get(row!.previewKey!)!.body).metadata()).width).toBe(200);
   });
 
-  it('discards a file whose content is not the declared image type', async () => {
+  it('refuses invalid payloads and mismatched image MIME types immediately at confirmUpload', async () => {
     const lotId = await newLot();
-    const fake = await uploaded(lotId, Buffer.from('<?php echo 1; ?>'));
-    expect(await media.processPhoto(fake)).toBe(false);
-    expect(await db.select().from(lotPhotos).where(eq(lotPhotos.id, fake))).toHaveLength(0);
+    const fakeReq = await media.requestUpload(seller, lotId, { contentType: 'image/jpeg', sizeBytes: 100 });
+    const [fakeRow] = await db.select().from(lotPhotos).where(eq(lotPhotos.id, fakeReq.photoId));
+    await storage.put(fakeRow!.objectKey, Buffer.from('<?php echo 1; ?>'), 'image/jpeg');
+    await expect(media.confirmUpload(seller, lotId, fakeReq.photoId)).rejects.toMatchObject({ status: 422, code: 'INVALID_IMAGE' });
+    expect(storage.objects.has(fakeRow!.objectKey)).toBe(false);
+    expect(await db.select().from(lotPhotos).where(eq(lotPhotos.id, fakeReq.photoId))).toHaveLength(0);
 
     const png = await sharp({ create: { width: 10, height: 10, channels: 3, background: '#000' } }).png().toBuffer();
-    const mismatched = await uploaded(lotId, png, 'image/jpeg');
-    expect(await media.processPhoto(mismatched)).toBe(false);
+    const mismatchReq = await media.requestUpload(seller, lotId, { contentType: 'image/jpeg', sizeBytes: png.length });
+    const [mismatchRow] = await db.select().from(lotPhotos).where(eq(lotPhotos.id, mismatchReq.photoId));
+    await storage.put(mismatchRow!.objectKey, png, 'image/jpeg');
+    await expect(media.confirmUpload(seller, lotId, mismatchReq.photoId)).rejects.toMatchObject({ status: 422, code: 'INVALID_IMAGE' });
+  });
+
+  it('prevents swapping the S3 object in raw/ after confirmUpload passes and checks sha256 on processPhoto', async () => {
+    const lotId = await newLot();
+    const redJpeg = await sharp({ create: { width: 16, height: 16, channels: 3, background: { r: 255, g: 0, b: 0 } } }).jpeg().toBuffer();
+    const blueJpeg = await sharp({ create: { width: 16, height: 16, channels: 3, background: { r: 0, g: 0, b: 255 } } }).jpeg().toBuffer();
+    const req = await media.requestUpload(seller, lotId, { contentType: 'image/jpeg', sizeBytes: Math.max(redJpeg.length, blueJpeg.length) + 100 });
+    const [pendingRow] = await db.select().from(lotPhotos).where(eq(lotPhotos.id, req.photoId));
+    const rawObjectKey = pendingRow!.objectKey;
+
+    await storage.put(rawObjectKey, redJpeg, 'image/jpeg');
+    const confirmed = await media.confirmUpload(seller, lotId, req.photoId);
+    expect(confirmed.status).toBe('uploaded');
+
+    // Attacker overwrites the old raw/ presigned key with a blue JPEG after confirm succeeded:
+    await storage.put(rawObjectKey, blueJpeg, 'image/jpeg');
+    expect(await media.processPhoto(req.photoId)).toBe(true);
+    const [processedRow] = await db.select().from(lotPhotos).where(eq(lotPhotos.id, req.photoId));
+    const finalBuf = storage.objects.get(processedRow!.objectKey)!.body;
+    const { data } = await sharp(finalBuf).raw().toBuffer({ resolveWithObject: true });
+    // Must still be red, not attacker's blue!
+    expect(data[0]).toBeGreaterThan(200);
+    expect(data[2]).toBeLessThan(30);
+
+    // Also verify tampered staging object fails sha256 check:
+    const tamperedId = await uploaded(lotId, redJpeg);
+    const [staged] = await db.select().from(lotPhotos).where(eq(lotPhotos.id, tamperedId));
+    await storage.put(staged!.objectKey, blueJpeg, 'image/jpeg');
+    expect(await media.processPhoto(tamperedId)).toBe(false);
+  });
+
+  it('batch getThumbnails returns previews only for public lots with processed photos', async () => {
+    const activeLot = await newLot('active');
+    const draftLot = await newLot('draft');
+    const [activeReady] = await db.insert(lotPhotos).values({
+      lotId: activeLot, position: 0, objectKey: `photos/${activeLot}/1`, previewKey: `previews/${activeLot}/1.webp`,
+      contentType: 'image/jpeg', sizeBytes: 10, status: 'processed',
+    }).returning();
+    await db.insert(lotPhotos).values({
+      lotId: draftLot, position: 0, objectKey: `photos/${draftLot}/1`, previewKey: `previews/${draftLot}/1.webp`,
+      contentType: 'image/jpeg', sizeBytes: 10, status: 'processed',
+    });
+    const thumbs = await media.getThumbnails([activeLot, draftLot]);
+    expect(thumbs[activeLot]).toContain(activeReady!.previewKey!);
+    expect(thumbs[draftLot]).toBeUndefined();
   });
 
   it('lets several workers process one photo without duplicating work', async () => {

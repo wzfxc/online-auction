@@ -1,10 +1,13 @@
 import { Catch, HttpException, Logger, type ArgumentsHost, type ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
 import { AppError, type ErrorBody } from '../common/errors/app-error.js';
+import {
+  PG_FOREIGN_KEY_VIOLATION, PG_INVALID_BYTE_SEQUENCE, PG_NUMERIC_VALUE_OUT_OF_RANGE, pgErrorCode,
+} from '../common/errors/pg-errors.js';
 
 const CODE_BY_STATUS: Record<number, string> = {
   400: 'VALIDATION_ERROR', 401: 'UNAUTHORIZED', 403: 'FORBIDDEN', 404: 'NOT_FOUND', 405: 'METHOD_NOT_ALLOWED',
-  413: 'PAYLOAD_TOO_LARGE', 415: 'UNSUPPORTED_MEDIA_TYPE', 429: 'RATE_LIMITED',
+  413: 'PAYLOAD_TOO_LARGE', 415: 'UNSUPPORTED_MEDIA_TYPE', 429: 'RATE_LIMIT_EXCEEDED',
 };
 
 function httpStatusOf(e: unknown): number | null {
@@ -22,6 +25,10 @@ export class ErrorFilter implements ExceptionFilter {
   catch(e: unknown, host: ArgumentsHost): void {
     const res = host.switchToHttp().getResponse<Response>();
     const { status, body } = this.map(e);
+    if (status === 429 && !res.getHeader('Retry-After')) {
+      const retry = (body.details as { retryAfterSeconds?: unknown } | undefined)?.retryAfterSeconds;
+      if (typeof retry === 'number' && retry > 0) res.setHeader('Retry-After', String(retry));
+    }
     res.status(status).json(body);
   }
 
@@ -31,6 +38,16 @@ export class ErrorFilter implements ExceptionFilter {
     if (status !== null) {
       const message = e instanceof Error ? e.message : 'Bad request';
       return { status, body: { code: CODE_BY_STATUS[status] ?? 'BAD_REQUEST', message } };
+    }
+    const pgCode = pgErrorCode(e);
+    if (pgCode === PG_INVALID_BYTE_SEQUENCE) {
+      return { status: 400, body: { code: 'VALIDATION_ERROR', message: 'Invalid characters in input' } };
+    }
+    if (pgCode === PG_FOREIGN_KEY_VIOLATION) {
+      return { status: 400, body: { code: 'VALIDATION_ERROR', message: 'Referenced record does not exist' } };
+    }
+    if (pgCode === PG_NUMERIC_VALUE_OUT_OF_RANGE) {
+      return { status: 400, body: { code: 'VALIDATION_ERROR', message: 'Numeric value out of range' } };
     }
     this.log.error(e instanceof Error ? (e.stack ?? e.message) : String(e));
     return { status: 500, body: { code: 'INTERNAL_ERROR', message: 'Unexpected server error' } };

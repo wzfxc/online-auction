@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke the current bearer token */
+        post: operations["logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/me": {
         parameters: {
             query?: never;
@@ -603,6 +620,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/media/thumbnails": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Batch signed preview URLs for public catalog lots */
+        get: operations["getLotThumbnails"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/search": {
         parameters: {
             query?: never;
@@ -806,6 +840,19 @@ export interface operations {
                     };
                 };
             };
+            /** @description Too many requests (RATE_LIMIT_EXCEEDED) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
         };
     };
     login: {
@@ -873,6 +920,56 @@ export interface operations {
                     };
                 };
             };
+            /** @description Too many requests (RATE_LIMIT_EXCEEDED) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
+    logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authentication required (UNAUTHORIZED) */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Too many requests (RATE_LIMIT_EXCEEDED) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
         };
     };
     getMe: {
@@ -903,6 +1000,19 @@ export interface operations {
             };
             /** @description Authentication required (UNAUTHORIZED) */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Too many requests (RATE_LIMIT_EXCEEDED) */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2228,6 +2338,19 @@ export interface operations {
                     };
                 };
             };
+            /** @description Too many requests (RATE_LIMIT_EXCEEDED) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
         };
     };
     buyNow: {
@@ -2329,6 +2452,19 @@ export interface operations {
             };
             /** @description Rule violation (business-rule codes) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Too many requests (RATE_LIMIT_EXCEEDED) */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4176,6 +4312,45 @@ export interface operations {
             };
         };
     };
+    getLotThumbnails: {
+        parameters: {
+            query: {
+                ids: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        thumbnails: {
+                            [key: string]: string;
+                        };
+                    };
+                };
+            };
+            /** @description Invalid input (VALIDATION_ERROR) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+        };
+    };
     searchLots: {
         parameters: {
             query?: {
@@ -4579,6 +4754,32 @@ export interface operations {
         responses: {
             /** @description Invalid input (VALIDATION_ERROR) */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description Not found (NOT_FOUND) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        message: string;
+                        details?: unknown;
+                    };
+                };
+            };
+            /** @description State conflict (business-rule codes) */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

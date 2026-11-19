@@ -43,6 +43,13 @@
       "when": 1795084669674,
       "tag": "0005_reports_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795085669674,
+      "tag": "0006_security_hardening",
+      "breakpoints": true
     }
   ]
 }

@@ -5,11 +5,13 @@ import { z } from 'zod';
 import type { Db } from '../db/client.js';
 import { Public } from './auth.js';
 import { ZResponse } from './openapi-helpers.js';
+import { SkipThrottle } from './rate-limit.js';
 import { DB } from './tokens.js';
 
 const healthSchema = z.object({ status: z.literal('ok') });
 
 @ApiTags('health')
+@SkipThrottle()
 @Controller('health')
 export class HealthController {
   constructor(@Inject(DB) private readonly db: Db) {}

@@ -91,6 +91,7 @@ export const lotPhotos = pgTable('lot_photos', {
   previewKey: text('preview_key'),
   contentType: text('content_type').notNull(),
   sizeBytes: integer('size_bytes').notNull(),
+  sha256: text('sha256'),
   status: photoStatus('status').notNull().default('pending_upload'),
 }, (t) => [
   uniqueIndex('lot_photos_lot_pos_uq').on(t.lotId, t.position),
@@ -289,6 +290,12 @@ export const searchOutbox = pgTable('search_outbox', {
   createdAt: ts('created_at').notNull().defaultNow(),
   processedAt: ts('processed_at'),
 }, (t) => [index('search_outbox_pending_idx').on(t.id).where(sql`${t.processedAt} is null`)]);
+
+export const revokedTokens = pgTable('revoked_tokens', {
+  jti: text('jti').primaryKey(),
+  expiresAt: ts('expires_at').notNull(),
+  revokedAt: ts('revoked_at').notNull().defaultNow(),
+}, (t) => [index('revoked_tokens_expires_idx').on(t.expiresAt)]);
 
 /** Set once per scheduled effect so repeated or parallel workers never do it twice. */
 export const jobEffects = pgTable('job_effects', {

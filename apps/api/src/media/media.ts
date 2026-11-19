@@ -1,7 +1,8 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
+import { and, asc, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import {
   MAX_PHOTOS, PHOTO_CONTENT_TYPES, PHOTO_MAX_BYTES, PHOTO_UPLOAD_TTL_SECONDS, PHOTO_VIEW_TTL_SECONDS,
-  type LotStatus,
+  type LotStatus, type PhotoContentType,
 } from '@auction/shared';
 import { z } from 'zod';
 import type { Clock } from '../common/clock/clock.js';
@@ -9,7 +10,7 @@ import { Errors } from '../common/errors/app-error.js';
 import type { Db } from '../db/client.js';
 import { lotEvents, lotPhotos, lots } from '../db/schema.js';
 import type { Principal } from '../lots/lots.js';
-import { processImage } from './process-image.js';
+import { processImage, verifyImageContent } from './process-image.js';
 import type { ObjectStorage, PresignedUpload } from './storage.js';
 
 export const requestUploadSchema = z.object({
@@ -32,8 +33,10 @@ export interface PhotoDto {
 const PUBLIC_STATUSES: readonly LotStatus[] = ['active', 'ended_unsold', 'awaiting_payment', 'paid', 'shipped', 'completed'];
 
 const rawKey = (lotId: string, photoId: string): string => `raw/${lotId}/${photoId}`;
+const verifiedKey = (lotId: string, photoId: string): string => `verified/${lotId}/${photoId}`;
 const originalKey = (lotId: string, photoId: string): string => `photos/${lotId}/${photoId}`;
 const previewKey = (lotId: string, photoId: string): string => `previews/${lotId}/${photoId}.webp`;
+const sha256Hex = (buf: Buffer): string => createHash('sha256').update(buf).digest('hex');
 
 /**
  * Photos: the bucket is private. The browser uploads straight to a presigned POST pinned to one type and size;
@@ -66,7 +69,10 @@ export class MediaService {
     return { photoId, position, upload };
   }
 
-  /** Owner confirms the browser finished uploading; we verify the object really exists within the declared size. */
+  /**
+   * Owner confirms the browser finished uploading; validates size, magic bytes and image format,
+   * records SHA-256 and moves the object out of the client-writable `raw/` key to `verified/`.
+   */
   async confirmUpload(user: Principal, lotId: string, photoId: string): Promise<PhotoDto> {
     const photo = await this.ownPhoto(user, lotId, photoId);
     if (photo.status !== 'pending_upload') return toPhotoDto(photo);
@@ -80,20 +86,41 @@ export class MediaService {
       await this.db.delete(lotPhotos).where(eq(lotPhotos.id, photoId));
       throw Errors.unprocessable('PHOTO_TOO_LARGE', 'The uploaded file is larger than declared');
     }
-    const [row] = await this.db.update(lotPhotos).set({ status: 'uploaded' })
+    const bytes = await this.storage.get(photo.objectKey);
+    if (!bytes) throw Errors.unprocessable('PHOTO_NOT_UPLOADED', 'The file has not been uploaded yet');
+    if (bytes.length > PHOTO_MAX_BYTES || bytes.length > photo.sizeBytes) {
+      await this.storage.delete(photo.objectKey);
+      await this.db.delete(lotPhotos).where(eq(lotPhotos.id, photoId));
+      throw Errors.unprocessable('PHOTO_TOO_LARGE', 'The uploaded file is larger than declared');
+    }
+    const valid = await verifyImageContent(bytes, photo.contentType as PhotoContentType);
+    if (!valid) {
+      await this.storage.delete(photo.objectKey);
+      await this.db.delete(lotPhotos).where(eq(lotPhotos.id, photoId));
+      throw Errors.unprocessable('INVALID_IMAGE', 'Uploaded file is not a valid image of the declared type');
+    }
+    const checksum = sha256Hex(bytes);
+    const immutableKey = verifiedKey(lotId, photoId);
+    await this.storage.put(immutableKey, bytes, photo.contentType);
+    const [row] = await this.db.update(lotPhotos)
+      .set({ status: 'uploaded', objectKey: immutableKey, sha256: checksum, sizeBytes: bytes.length })
       .where(and(eq(lotPhotos.id, photoId), eq(lotPhotos.status, 'pending_upload'))).returning();
+    await this.storage.delete(photo.objectKey);
     return toPhotoDto(row ?? photo);
   }
 
   /**
    * Worker step. Safe to repeat and to run in several workers: the status CAS makes one of them win.
-   * Returns false when the file is not a valid image of the declared type (the photo is discarded).
+   * Returns false when the file is not a valid image of the declared type or fails checksum (the photo is discarded).
    */
   async processPhoto(photoId: string): Promise<boolean> {
     const [photo] = await this.db.select().from(lotPhotos).where(eq(lotPhotos.id, photoId));
     if (!photo || photo.status !== 'uploaded') return photo?.status === 'processed';
     const source = await this.storage.get(photo.objectKey);
-    const result = source && source.length <= PHOTO_MAX_BYTES ? await processImage(source, photo.contentType) : null;
+    const checksumOk = source !== null && (!photo.sha256 || sha256Hex(source) === photo.sha256);
+    const result = source && checksumOk && source.length <= PHOTO_MAX_BYTES
+      ? await processImage(source, photo.contentType)
+      : null;
     if (!result) {
       await this.storage.delete(photo.objectKey);
       await this.db.delete(lotPhotos).where(and(eq(lotPhotos.id, photoId), eq(lotPhotos.status, 'uploaded')));
@@ -139,6 +166,30 @@ export class MediaService {
     const key = variant === 'preview' ? photo.previewKey : photo.objectKey;
     if (!key || photo.status === 'pending_upload') throw Errors.notFound('Photo');
     return { url: await this.storage.presignDownload(key, PHOTO_VIEW_TTL_SECONDS), expiresInSeconds: PHOTO_VIEW_TTL_SECONDS };
+  }
+
+  /** Batch presigned preview URLs for public lots (eliminates per-card catalog N+1 calls). */
+  async getThumbnails(lotIds: string[]): Promise<Record<string, string>> {
+    const unique = [...new Set(lotIds)].slice(0, 100);
+    if (unique.length === 0) return {};
+    const rows = await this.db
+      .selectDistinctOn([lotPhotos.lotId], {
+        lotId: lotPhotos.lotId,
+        previewKey: lotPhotos.previewKey,
+      })
+      .from(lotPhotos)
+      .innerJoin(lots, eq(lots.id, lotPhotos.lotId))
+      .where(and(
+        inArray(lotPhotos.lotId, unique),
+        inArray(lots.status, [...PUBLIC_STATUSES]),
+        eq(lotPhotos.status, 'processed'),
+        isNotNull(lotPhotos.previewKey),
+      ))
+      .orderBy(lotPhotos.lotId, asc(lotPhotos.position));
+    const entries = await Promise.all(
+      rows.map(async (r) => [r.lotId, await this.storage.presignDownload(r.previewKey!, PHOTO_VIEW_TTL_SECONDS)] as const),
+    );
+    return Object.fromEntries(entries);
   }
 
   /** Photos stuck in `uploaded` (worker died, Redis lost): the DB sweeper feeds them back, so no queue is required. */

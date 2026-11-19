@@ -8,6 +8,7 @@ export async function createApp(deps: ApiDeps, opts: { logger?: false } = {}): P
     rawBody: true, // the payment webhook is verified over the exact bytes
     ...(opts.logger === false ? { logger: false } : {}),
   });
+  app.set('trust proxy', 1);
   app.enableCors({ origin: true, credentials: true });
   SwaggerModule.setup('docs', app, buildOpenApi(app));
   return app;

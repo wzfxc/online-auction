@@ -8,6 +8,36 @@ const FORMAT_TO_TYPE: Record<string, PhotoContentType> = {
 };
 const MAX_INPUT_PIXELS = 50_000_000;
 
+function hasMagicBytes(input: Buffer, declaredType: PhotoContentType): boolean {
+  if (declaredType === 'image/jpeg') {
+    return input.length >= 3 && input[0] === 0xff && input[1] === 0xd8 && input[2] === 0xff;
+  }
+  if (declaredType === 'image/png') {
+    return (
+      input.length >= 8 &&
+      input[0] === 0x89 && input[1] === 0x50 && input[2] === 0x4e && input[3] === 0x47 &&
+      input[4] === 0x0d && input[5] === 0x0a && input[6] === 0x1a && input[7] === 0x0a
+    );
+  }
+  // RIFF....WEBP
+  return (
+    input.length >= 12 &&
+    input.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    input.subarray(8, 12).toString('ascii') === 'WEBP'
+  );
+}
+
+/** Validates both file signature bytes and decodable sharp image format against `declaredType`. */
+export async function verifyImageContent(input: Buffer, declaredType: PhotoContentType): Promise<boolean> {
+  if (!hasMagicBytes(input, declaredType)) return false;
+  try {
+    const format = (await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS }).metadata()).format;
+    return (format ? FORMAT_TO_TYPE[format] : undefined) === declaredType;
+  } catch {
+    return false;
+  }
+}
+
 export interface ProcessedImage {
   contentType: PhotoContentType;
   /** Re-encoded original without any metadata (EXIF, GPS, ICC, XMP). */

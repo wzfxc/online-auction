@@ -23,6 +23,8 @@ export interface TokenClaims {
   role: 'buyer' | 'seller' | 'moderator' | 'finance';
   /** Expiry, seconds since epoch (computed from the injected Clock by the caller). */
   exp: number;
+  /** Unique token identifier used for server-side logout revocation. */
+  jti?: string;
 }
 
 const b64url = (b: Buffer | string): string => Buffer.from(b).toString('base64url');

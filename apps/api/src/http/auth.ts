@@ -5,10 +5,12 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { verifyToken, type Role } from '../auth/crypto.js';
+import { isTokenRevoked } from '../auth/revocation.js';
 import type { Clock } from '../common/clock/clock.js';
 import { Errors } from '../common/errors/app-error.js';
+import type { Db } from '../db/client.js';
 import type { Principal } from '../lots/lots.js';
-import { CLOCK, CONFIG, type ApiConfig } from './tokens.js';
+import { CLOCK, CONFIG, DB, type ApiConfig } from './tokens.js';
 
 const ROLES_KEY = 'auction:roles';
 const PUBLIC_KEY = 'auction:public';
@@ -34,19 +36,22 @@ export function bearerToken(header: string | undefined): string | null {
 export class AuthGuard implements CanActivate {
   constructor(
     @Inject(Reflector) private readonly reflector: Reflector,
+    @Inject(DB) private readonly db: Db,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(CONFIG) private readonly config: ApiConfig,
   ) {}
 
-  canActivate(ctx: ExecutionContext): boolean {
+  async canActivate(ctx: ExecutionContext): Promise<boolean> {
     const targets = [ctx.getHandler(), ctx.getClass()];
     const isPublic = this.reflector.getAllAndOverride<boolean | undefined>(PUBLIC_KEY, targets) === true;
     const roles = this.reflector.getAllAndOverride<Role[] | undefined>(ROLES_KEY, targets);
     const req = ctx.switchToHttp().getRequest<AuthedRequest>();
 
+    const now = this.clock.now();
     const token = bearerToken(req.headers.authorization);
-    const claims = token ? verifyToken(token, this.config.jwtSecret, Math.floor(this.clock.now().getTime() / 1000)) : null;
-    req.principal = claims ? { id: claims.sub, role: claims.role } : null;
+    const claims = token ? verifyToken(token, this.config.jwtSecret, Math.floor(now.getTime() / 1000)) : null;
+    const revoked = claims?.jti ? await isTokenRevoked(this.db, claims.jti, now) : false;
+    req.principal = claims && !revoked ? { id: claims.sub, role: claims.role } : null;
 
     if (isPublic && !roles) return true;
     if (!req.principal) throw Errors.unauthorized();

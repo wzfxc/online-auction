@@ -7,6 +7,7 @@ import type { Principal } from '../lots/lots.js';
 import { CurrentUser, Public, Roles } from './auth.js';
 import { ApiErrors, IdempotencyKeyHeader, ZBody, ZQuery, ZResponse, ZUuidParam } from './openapi-helpers.js';
 import { requireIdempotencyKey, UuidPipe } from './pipes.js';
+import { RateLimitTier } from './rate-limit.js';
 import { bidHistoryQuerySchema, bidHistorySchema, bidResultSchema, buyNowResultSchema } from './schemas.js';
 import { z } from 'zod';
 import { Errors } from '../common/errors/app-error.js';
@@ -20,13 +21,14 @@ export class BidsController {
   constructor(@Inject(BidService) private readonly bids: BidService) {}
 
   @Roles('buyer', 'seller')
+  @RateLimitTier('bid')
   @Post('bids')
   @ApiOperation({ operationId: 'placeBid', summary: 'Place a bid, optionally with an auto-bid ceiling' })
   @ZUuidParam('id')
   @IdempotencyKeyHeader()
   @ZBody(placeBidSchema)
   @ZResponse(201, bidResultSchema, 'Bid accepted (replayed responses carry Idempotency-Replayed: true)')
-  @ApiErrors(400, 401, 403, 404, 409, 422)
+  @ApiErrors(400, 401, 403, 404, 409, 422, 429)
   async place(
     @CurrentUser() user: Principal | null,
     @Param('id', UuidPipe) lotId: string,
@@ -40,12 +42,13 @@ export class BidsController {
   }
 
   @Roles('buyer', 'seller')
+  @RateLimitTier('bid')
   @Post('buy-now')
   @ApiOperation({ operationId: 'buyNow', summary: 'Buy the lot at the buy-now price (before the first bid)' })
   @ZUuidParam('id')
   @IdempotencyKeyHeader()
   @ZResponse(201, buyNowResultSchema, 'Lot bought; payment due within the payment window')
-  @ApiErrors(400, 401, 403, 404, 409, 422)
+  @ApiErrors(400, 401, 403, 404, 409, 422, 429)
   async buyNow(
     @CurrentUser() user: Principal | null,
     @Param('id', UuidPipe) lotId: string,

@@ -14,7 +14,7 @@ import { ReportService } from '../reports/reports.js';
 import { SalesService } from '../sales/sales.js';
 import { SearchService } from '../search/search.js';
 import type { Meilisearch } from 'meilisearch';
-import { MediaController } from './media.controller.js';
+import { MediaController, ThumbnailsController } from './media.controller.js';
 import { ModerationController } from './moderation.controller.js';
 import { NotificationsController } from './notifications.controller.js';
 import { PaymentsController } from './payments.controller.js';
@@ -28,7 +28,11 @@ import { BidsController } from './bids.controller.js';
 import { ErrorFilter } from './error.filter.js';
 import { HealthController } from './health.controller.js';
 import { LotsController } from './lots.controller.js';
-import { CLOCK, CONFIG, DB, type ApiConfig } from './tokens.js';
+import {
+  DEFAULT_RATE_LIMIT_POLICY, MemoryRateLimitStore, RateLimitGuard,
+  type RateLimitPolicyMap, type RateLimitStore,
+} from './rate-limit.js';
+import { CLOCK, CONFIG, DB, RATE_LIMIT_POLICY, RATE_LIMIT_STORE, type ApiConfig } from './tokens.js';
 import { WalletController } from './wallet.controller.js';
 
 export interface ApiDeps {
@@ -38,12 +42,14 @@ export interface ApiDeps {
   paymentProvider: StubPaymentProvider;
   storage: ObjectStorage;
   meili: Meilisearch;
+  rateLimitStore?: RateLimitStore;
+  rateLimitPolicy?: RateLimitPolicyMap;
 }
 
 export const CONTROLLERS = [
   AuthController, LotsController, BidsController, WalletController, SalesController, ReferenceController,
-  ReportsController, ModerationController, MediaController, SearchController, NotificationsController,
-  PaymentsController, HealthController,
+  ReportsController, ModerationController, MediaController, ThumbnailsController, SearchController,
+  NotificationsController, PaymentsController, HealthController,
 ];
 
 /** The API never sends mail itself (the worker drains the outbox); reaching this is a wiring bug. */
@@ -70,7 +76,10 @@ export class AppModule {
       { provide: MediaService, useValue: new MediaService(deps.db, deps.clock, deps.storage) },
       { provide: SearchService, useValue: new SearchService(deps.meili, () => deps.clock.now()) },
       { provide: NotificationService, useValue: new NotificationService(deps.db, deps.clock, NO_MAIL) },
+      { provide: RATE_LIMIT_STORE, useValue: deps.rateLimitStore ?? new MemoryRateLimitStore(deps.clock) },
+      { provide: RATE_LIMIT_POLICY, useValue: deps.rateLimitPolicy ?? DEFAULT_RATE_LIMIT_POLICY },
       { provide: APP_GUARD, useClass: AuthGuard },
+      { provide: APP_GUARD, useClass: RateLimitGuard },
       { provide: APP_FILTER, useClass: ErrorFilter },
     ];
     return { module: AppModule, controllers: CONTROLLERS, providers };

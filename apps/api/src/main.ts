@@ -1,8 +1,11 @@
+import { Redis } from 'ioredis';
 import { Meilisearch } from 'meilisearch';
 import { verifyToken } from './auth/crypto.js';
+import { isTokenRevoked } from './auth/revocation.js';
 import { SystemClock } from './common/clock/clock.js';
 import { loadEnv } from './config.js';
 import { createDb, runMigrations } from './db/client.js';
+import { RedisRateLimitStore } from './http/rate-limit.js';
 import { createApp } from './http/setup.js';
 import { S3Storage } from './media/storage.js';
 import { StubPaymentProvider } from './payments-stub/provider.js';
@@ -42,8 +45,22 @@ async function main(): Promise<void> {
     },
   });
 
+  let rateLimitRedis: Redis | null = null;
+  if (env.REDIS_URL) {
+    rateLimitRedis = new Redis(env.REDIS_URL, {
+      lazyConnect: true,
+      maxRetriesPerRequest: 1,
+      enableOfflineQueue: false,
+      connectTimeout: 500,
+      commandTimeout: 200,
+    });
+    rateLimitRedis.on('error', (e: unknown) => console.error('rate-limit redis error', e));
+    await rateLimitRedis.connect().catch(() => undefined);
+  }
+
   const app = await createApp({
     db, clock, paymentProvider: provider, storage, meili,
+    ...(rateLimitRedis ? { rateLimitStore: new RedisRateLimitStore(rateLimitRedis) } : {}),
     config: { jwtSecret: env.JWT_SECRET, tokenTtlSeconds: env.TOKEN_TTL_SECONDS, webhookSecret: env.PAYMENT_WEBHOOK_SECRET },
   });
   app.enableShutdownHooks();
@@ -52,9 +69,12 @@ async function main(): Promise<void> {
   const realtime = new RealtimeServer({
     db, clock, databaseUrl: env.DATABASE_URL, ...(env.REDIS_URL ? { redisUrl: env.REDIS_URL } : {}),
     corsOrigin: '*',
-    authenticate: (token) => {
-      const claims = verifyToken(token, env.JWT_SECRET, Math.floor(clock.now().getTime() / 1000));
-      return Promise.resolve(claims ? { id: claims.sub, role: claims.role } : null);
+    authenticate: async (token) => {
+      const now = clock.now();
+      const claims = verifyToken(token, env.JWT_SECRET, Math.floor(now.getTime() / 1000));
+      if (!claims) return null;
+      if (claims.jti && (await isTokenRevoked(db, claims.jti, now))) return null;
+      return { id: claims.sub, role: claims.role };
     },
     onError: (e) => console.error('realtime error', e),
   });
@@ -66,6 +86,7 @@ async function main(): Promise<void> {
     if (stopping) return;
     stopping = true;
     setTimeout(() => process.exit(1), STOP_TIMEOUT_MS).unref();
+    rateLimitRedis?.disconnect();
     void realtime.stop().then(() => app.close()).then(() => pool.end()).then(() => process.exit(0));
   };
   process.on('SIGTERM', stop);
