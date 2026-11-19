@@ -7,7 +7,7 @@
 | 1 | Каркас монорепо + CI | ✅ |
 | 2 | Docker compose, інфраструктура | ✅ (сервіси застосунку не збиралися: це заглушки) |
 | 3 | Схема БД, міграції | ✅ |
-| 4 | Гроші/проводки/wallet/Clock/помилки/auth/idempotency | ⬜ |
+| 4 | Гроші/проводки/wallet/Clock/помилки/auth/idempotency | ✅ (чисті сервіси; Nest-обв'язка, guards і фільтр — з першими контролерами, етап 6) |
 | 5 | Платіжна заглушка | ⬜ |
 | 6 | Лоти | ⬜ |
 | 7 | Ставки, автоставки | ⬜ |
@@ -94,3 +94,4 @@
 | (етап 2) | `chore: docker compose, nginx, .env.example` |
 | (етап 2, fix) | `fix: bind published compose ports to loopback` |
 | (етап 3) | `feat(db): drizzle schema, migrations, ledger triggers` |
+| (етап 4) | `feat(core): clock, errors, ledger, wallet, idempotency, auth primitives` |
