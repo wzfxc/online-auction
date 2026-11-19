@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test": "pnpm -r --if-present test",
     "test:int": "pnpm -r --if-present test:int",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
     "verify": "pnpm typecheck && pnpm lint && pnpm gen:check && pnpm test",
     "gen:openapi": "pnpm --filter @auction/api gen:openapi",
     "gen:client": "pnpm --filter @auction/api-client gen",
@@ -17,6 +18,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@playwright/test": "^1.50.0",
     "eslint": "^9.0.0",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.0.0",

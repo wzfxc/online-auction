@@ -19,5 +19,5 @@ export default tseslint.config(
       ],
     },
   },
-  { files: ['**/*.test.ts', '**/clock*.ts', '**/*.config.*'], rules: { 'no-restricted-syntax': 'off' } },
+  { files: ['**/*.test.ts', '**/clock*.ts', '**/*.config.*', 'e2e/**/*.ts'], rules: { 'no-restricted-syntax': 'off' } },
 );

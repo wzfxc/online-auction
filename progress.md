@@ -23,7 +23,7 @@
 | 16 | Звіти, звірка | ✅ (`ReportService` + `ReportsController` `/reports/period`, `/reports/reconciliation`: оборот, комісія, частка неоплачених виграшів, розбивка по категоріях < 500 мс за 90 днів з індексом `sales(created_at, status)`; звірка: сума проводок = 0, баланси гаманців = сумі проводок, розбіжності з платіжною заглушкою; int-тести) |
 | 17 | Сид | ✅ (`apps/api/src/seed/seed.ts`: set-based SQL, повний обсяг 10 000 користувачів / 30 категорій / 15 міст / 50 000 лотів (5 000 активних, 200 закінчуються за годину, 100 на модерації) / 500 000 ставок / 5 100 фото-заглушок за ~68 с; ідемпотентний (маркер `seed:v1` у `job_effects` в одній транзакції з даними + advisory lock для кількох worker); запуск у worker при `SEED_ON_START=true` з подальшим `reindexAll`; ручний `pnpm --filter @auction/api seed`; int-тест: обсяги, ідемпотентність, паралельні запуски, баланс ledger, реальна ставка на засіяному лоті) |
 | 18 | Локалізація | ✅ (`next-intl` для `uk`, `en`, `pl`: форматування гривні `1 234,50 ₴` / `1,234.50 ₴`, дат, серверного таймера, ICU plural для ставок/лотів/часу, перемикач локалі зі збереженням URL; unit-тести форматування й повноти ключів) |
-| 19 | e2e | ⬜ |
+| 19 | e2e | ✅ (`e2e/auction.spec.ts` на живому Docker Compose стеку: два браузери на одному лоті через репліки, перебиття автоставкою зі сповіщенням, антиснайпінг у реальному часі, повний цикл поповнення через заглушку → Buy Now з клавіатури → оплата з клавіатури → відправка → підтвердження → виплата продавцю → звірка фінансиста, URL-стан каталогу й локалі `uk`/`en`/`pl`, SLA <200мс/<500мс на сиді; виправлено IPv4 healthcheck `127.0.0.1` у compose) |
 | 20 | Фінальна перевірка | ⬜ |
 
 ## Інваріанти (15)
@@ -120,4 +120,5 @@
 | (етап 16) | `feat(reports): period report with category breakdown and ledger/stub reconciliation` |
 | (етап 17) | `feat(seed): idempotent set-based seed of 10k users, 50k lots, 500k bids, placeholder photos` |
 | (етапи 15, 18) | `feat(web): nextjs 15 frontend with live bidding, cabinets, uk/en/pl i18n, and openapi path params` |
+| (етап 19) | `test(e2e): playwright e2e suite against compose stack and ipv4 healthchecks` |
 

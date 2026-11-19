@@ -39,7 +39,7 @@ services:
     ports: ["127.0.0.1:7700:7700"]
     volumes: [meili:/meili_data]
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:7700/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7700/health"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -65,7 +65,7 @@ services:
     build: { context: ., dockerfile: docker/node.Dockerfile, args: { APP: api } }
     environment: { PORT: "3001", INSTANCE_ID: api1 }
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
       interval: 5s
       timeout: 3s
       retries: 30
