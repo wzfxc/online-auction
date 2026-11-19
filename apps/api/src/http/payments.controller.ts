@@ -7,7 +7,7 @@ import { PaymentService } from '../payments/payments.js';
 import { StubPaymentProvider, type StubSessionDto } from '../payments-stub/provider.js';
 import { SIGNATURE_HEADER } from '../payments-stub/signature.js';
 import { Public } from './auth.js';
-import { ApiErrors, ZBody, ZResponse } from './openapi-helpers.js';
+import { ApiErrors, ZBody, ZResponse, ZUuidParam } from './openapi-helpers.js';
 import { UuidPipe } from './pipes.js';
 import { payerActionSchema, stubSessionSchema, webhookAckSchema } from './schemas.js';
 
@@ -38,6 +38,7 @@ export class PaymentsController {
   @Public()
   @Get('payments-stub/sessions/:paymentId')
   @ApiOperation({ operationId: 'getStubSession', summary: 'Payment stub session details' })
+  @ZUuidParam('paymentId')
   @ZResponse(200, stubSessionSchema)
   @ApiErrors(400, 404)
   async getSession(@Param('paymentId', UuidPipe) paymentId: string): Promise<StubSessionDto> {
@@ -50,6 +51,7 @@ export class PaymentsController {
   @Public()
   @Get('payments-stub/pay/:paymentId')
   @ApiOperation({ operationId: 'getStubPayPage', summary: 'HTML payment stub page' })
+  @ZUuidParam('paymentId')
   @ApiErrors(400, 404)
   async payPage(@Param('paymentId', UuidPipe) paymentId: string, @Res() res: Response): Promise<void> {
     const s = await this.stub.getSession(paymentId);
@@ -112,6 +114,7 @@ export class PaymentsController {
   @Post('payments-stub/pay/:paymentId')
   @HttpCode(204)
   @ApiOperation({ operationId: 'stubPay', summary: 'Payment stub: the payer picks an outcome' })
+  @ZUuidParam('paymentId')
   @ZBody(payerActionSchema)
   @ApiErrors(400)
   async pay(@Param('paymentId', UuidPipe) paymentId: string, @Body() raw: unknown): Promise<void> {

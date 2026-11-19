@@ -5,7 +5,7 @@ import { Errors } from '../common/errors/app-error.js';
 import type { Principal } from '../lots/lots.js';
 import { MediaService, requestUploadSchema, type PhotoDto, type PhotoUploadDto } from '../media/media.js';
 import { CurrentUser, Public, Roles } from './auth.js';
-import { ApiErrors, ZBody, ZQuery, ZResponse } from './openapi-helpers.js';
+import { ApiErrors, ZBody, ZQuery, ZResponse, ZUuidParam } from './openapi-helpers.js';
 import { UuidPipe } from './pipes.js';
 import { photoSchema, photoUploadSchema, photoViewQuerySchema, photoViewSchema } from './schemas.js';
 
@@ -18,6 +18,7 @@ export class MediaController {
   @Roles('seller')
   @Post()
   @ApiOperation({ operationId: 'requestPhotoUpload', summary: 'Presigned POST pinned to one type and size' })
+  @ZUuidParam('id')
   @ZBody(requestUploadSchema)
   @ZResponse(201, photoUploadSchema)
   @ApiErrors(400, 401, 403, 404, 409, 422)
@@ -29,6 +30,8 @@ export class MediaController {
   @Post(':photoId/confirm')
   @HttpCode(200)
   @ApiOperation({ operationId: 'confirmPhotoUpload', summary: 'Confirm the browser upload finished' })
+  @ZUuidParam('id')
+  @ZUuidParam('photoId')
   @ZResponse(200, photoSchema)
   @ApiErrors(400, 401, 403, 404, 409, 422)
   confirm(
@@ -43,6 +46,8 @@ export class MediaController {
   @Delete(':photoId')
   @HttpCode(204)
   @ApiOperation({ operationId: 'deletePhoto', summary: 'Delete a photo of a draft lot' })
+  @ZUuidParam('id')
+  @ZUuidParam('photoId')
   @ApiErrors(400, 401, 403, 404, 409)
   async remove(
     @CurrentUser() user: Principal | null,
@@ -55,6 +60,7 @@ export class MediaController {
   @Public()
   @Get()
   @ApiOperation({ operationId: 'listPhotos', summary: 'Photos visible to the viewer' })
+  @ZUuidParam('id')
   @ZResponse(200, z.array(photoSchema))
   @ApiErrors(400, 404)
   list(@CurrentUser() user: Principal | null, @Param('id', UuidPipe) lotId: string): Promise<PhotoDto[]> {
@@ -64,6 +70,8 @@ export class MediaController {
   @Public()
   @Get(':photoId/url')
   @ApiOperation({ operationId: 'getPhotoUrl', summary: 'Short-lived signed download link' })
+  @ZUuidParam('id')
+  @ZUuidParam('photoId')
   @ZQuery(photoViewQuerySchema)
   @ZResponse(200, photoViewSchema)
   @ApiErrors(400, 404)

@@ -5,7 +5,7 @@ import { placeBidSchema } from '@auction/shared';
 import { BidService } from '../bids/bids.js';
 import type { Principal } from '../lots/lots.js';
 import { CurrentUser, Public, Roles } from './auth.js';
-import { ApiErrors, IdempotencyKeyHeader, ZBody, ZQuery, ZResponse } from './openapi-helpers.js';
+import { ApiErrors, IdempotencyKeyHeader, ZBody, ZQuery, ZResponse, ZUuidParam } from './openapi-helpers.js';
 import { requireIdempotencyKey, UuidPipe } from './pipes.js';
 import { bidHistoryQuerySchema, bidHistorySchema, bidResultSchema, buyNowResultSchema } from './schemas.js';
 import { z } from 'zod';
@@ -22,6 +22,7 @@ export class BidsController {
   @Roles('buyer', 'seller')
   @Post('bids')
   @ApiOperation({ operationId: 'placeBid', summary: 'Place a bid, optionally with an auto-bid ceiling' })
+  @ZUuidParam('id')
   @IdempotencyKeyHeader()
   @ZBody(placeBidSchema)
   @ZResponse(201, bidResultSchema, 'Bid accepted (replayed responses carry Idempotency-Replayed: true)')
@@ -41,6 +42,7 @@ export class BidsController {
   @Roles('buyer', 'seller')
   @Post('buy-now')
   @ApiOperation({ operationId: 'buyNow', summary: 'Buy the lot at the buy-now price (before the first bid)' })
+  @ZUuidParam('id')
   @IdempotencyKeyHeader()
   @ZResponse(201, buyNowResultSchema, 'Lot bought; payment due within the payment window')
   @ApiErrors(400, 401, 403, 404, 409, 422)
@@ -58,6 +60,7 @@ export class BidsController {
   @Public()
   @Get('bids')
   @ApiOperation({ operationId: 'getBidHistory', summary: 'Bid history, newest first, names masked' })
+  @ZUuidParam('id')
   @ZQuery(bidHistoryQuerySchema)
   @ZResponse(200, bidHistorySchema)
   @ApiErrors(400, 404)

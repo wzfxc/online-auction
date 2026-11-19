@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { LotService, type CategoryDto, type CityDto, type LotDto, type Principal } from '../lots/lots.js';
 import { CurrentUser, Public, Roles } from './auth.js';
-import { ApiErrors, ZResponse } from './openapi-helpers.js';
+import { ApiErrors, ZResponse, ZUuidParam } from './openapi-helpers.js';
 import { UuidPipe } from './pipes.js';
 import { categorySchema, citySchema, favoriteStatusSchema, lotSchema } from './schemas.js';
 
@@ -43,6 +43,7 @@ export class ReferenceController {
   @Post('favorites/:id')
   @HttpCode(200)
   @ApiOperation({ operationId: 'addFavorite', summary: 'Add a lot to favorites (1h ending reminder)' })
+  @ZUuidParam('id')
   @ZResponse(200, favoriteStatusSchema)
   @ApiErrors(400, 401, 403, 404)
   addFavorite(
@@ -57,6 +58,7 @@ export class ReferenceController {
   @Delete('favorites/:id')
   @HttpCode(200)
   @ApiOperation({ operationId: 'removeFavorite', summary: 'Remove a lot from favorites' })
+  @ZUuidParam('id')
   @ZResponse(200, favoriteStatusSchema)
   @ApiErrors(400, 401, 403)
   removeFavorite(

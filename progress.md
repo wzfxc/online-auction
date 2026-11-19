@@ -19,10 +19,10 @@
 | 13 | Нотифікації | ✅ (`notifyOutbid` у транзакції ставки: in-app завжди, лист ≤ 1 за 15 хв на (user, lot); `NotificationService`: список/прочитано лише власні, нагадування за годину через CAS по `favorites.reminder_sent_at`, `drainEmails` — SKIP LOCKED з повтором при збої; цикли drain/нагадувань і SMTP-заглушка — з Nest-обв'язкою worker, етап 14) |
 | 14 | OpenAPI-клієнт | ✅ (усі контролери: auth, лоти, ставки, гаманець, модерація, медіа, пошук, нотифікації, вебхук і сторінка оплати заглушки, `/health`; `main.ts` API з RealtimeServer; процес worker із DB-свіперами; клієнт згенеровано) |
 | 14б | Продажі й довідники для веба | ✅ (SalesService: оплата виграшу з гаманця в межах 48 год із заліком залогу та проводками подвійного запису, відправка з трек-номером, підтвердження отримання + свіпер автопідтвердження через 7 днів, виплата продавцю за вирахуванням комісії D3; приховування переможця до оплати; обране + нагадування за 1 год; історія гаманця; «мої лоти» та сума до виплати; списки категорій/міст; повторне відкриття `ended_unsold` → `draft`; фільтр `noBids` у пошуку; контролери + OpenAPI + клієнт + int-тести) |
-| 15 | Веб | ⬜ (apps/web містить лише package.json) |
+| 15 | Веб | ✅ (`apps/web`: Next.js 15 App Router, React 19, TanStack Query, React Hook Form, Tailwind, Socket.IO + clock sync; каталог з пошуком/фасетами/фільтрами/сортуванням/пагінацією в URL, сторінка лота з живими оновленнями, кабінети покупця/продавця/модератора/фінансиста, завантаження фото, оплата/відправка/підтвердження, `aria-describedby` та клавіатурна доступність; додано `@ZUuidParam` у OpenAPI) |
 | 16 | Звіти, звірка | ✅ (`ReportService` + `ReportsController` `/reports/period`, `/reports/reconciliation`: оборот, комісія, частка неоплачених виграшів, розбивка по категоріях < 500 мс за 90 днів з індексом `sales(created_at, status)`; звірка: сума проводок = 0, баланси гаманців = сумі проводок, розбіжності з платіжною заглушкою; int-тести) |
 | 17 | Сид | ✅ (`apps/api/src/seed/seed.ts`: set-based SQL, повний обсяг 10 000 користувачів / 30 категорій / 15 міст / 50 000 лотів (5 000 активних, 200 закінчуються за годину, 100 на модерації) / 500 000 ставок / 5 100 фото-заглушок за ~68 с; ідемпотентний (маркер `seed:v1` у `job_effects` в одній транзакції з даними + advisory lock для кількох worker); запуск у worker при `SEED_ON_START=true` з подальшим `reindexAll`; ручний `pnpm --filter @auction/api seed`; int-тест: обсяги, ідемпотентність, паралельні запуски, баланс ledger, реальна ставка на засіяному лоті) |
-| 18 | Локалізація | ⬜ |
+| 18 | Локалізація | ✅ (`next-intl` для `uk`, `en`, `pl`: форматування гривні `1 234,50 ₴` / `1,234.50 ₴`, дат, серверного таймера, ICU plural для ставок/лотів/часу, перемикач локалі зі збереженням URL; unit-тести форматування й повноти ключів) |
 | 19 | e2e | ⬜ |
 | 20 | Фінальна перевірка | ⬜ |
 
@@ -119,4 +119,5 @@
 | (етап 14б) | `feat(sales): win payment with deposit credit, shipping, receipt confirmation, payout, favorites, references` |
 | (етап 16) | `feat(reports): period report with category breakdown and ledger/stub reconciliation` |
 | (етап 17) | `feat(seed): idempotent set-based seed of 10k users, 50k lots, 500k bids, placeholder photos` |
+| (етапи 15, 18) | `feat(web): nextjs 15 frontend with live bidding, cabinets, uk/en/pl i18n, and openapi path params` |
 

@@ -7,7 +7,7 @@ import type { LotDto, MyLotsResultDto, OwnLotDto, Principal } from '../lots/lots
 import { LotService } from '../lots/lots.js';
 import { SalesService, type SaleDto } from '../sales/sales.js';
 import { CurrentUser, Public, Roles } from './auth.js';
-import { ApiErrors, ZBody, ZQuery, ZResponse } from './openapi-helpers.js';
+import { ApiErrors, ZBody, ZQuery, ZResponse, ZUuidParam } from './openapi-helpers.js';
 import { UuidPipe } from './pipes.js';
 import { lotEventSchema, lotSchema, myLotsQuerySchema, myLotsResultSchema, ownLotSchema, saleSchema } from './schemas.js';
 
@@ -56,6 +56,7 @@ export class LotsController {
   @Public()
   @Get(':id')
   @ApiOperation({ operationId: 'getLot', summary: 'Lot details; unpublished lots only for owner/moderators' })
+  @ZUuidParam('id')
   @ZResponse(200, lotSchema)
   @ApiErrors(400, 404)
   get(@CurrentUser() user: Principal | null, @Param(id, UuidPipe) lotId: string): Promise<LotDto> {
@@ -65,6 +66,7 @@ export class LotsController {
   @Roles('buyer', 'seller')
   @Get(':id/sale')
   @ApiOperation({ operationId: 'getLotSale', summary: 'Current/latest sale for a lot (visible to the buyer or seller)' })
+  @ZUuidParam('id')
   @ZResponse(200, saleSchema.nullable())
   @ApiErrors(400, 401, 403, 404)
   getSale(@CurrentUser() user: Principal | null, @Param(id, UuidPipe) lotId: string): Promise<SaleDto | null> {
@@ -74,6 +76,7 @@ export class LotsController {
   @Roles('seller')
   @Patch(':id')
   @ApiOperation({ operationId: 'updateLot', summary: 'Edit a draft, or append to the description of a published lot' })
+  @ZUuidParam('id')
   @ZBody(updateLotSchema.or(appendDescriptionSchema))
   @ZResponse(200, ownLotSchema)
   @ApiErrors(400, 401, 403, 404, 409, 422)
@@ -85,6 +88,7 @@ export class LotsController {
   @Post(':id/submit')
   @HttpCode(200)
   @ApiOperation({ operationId: 'submitLot', summary: 'Send a draft to moderation' })
+  @ZUuidParam('id')
   @ZResponse(200, ownLotSchema)
   @ApiErrors(400, 401, 403, 404, 409)
   submit(@CurrentUser() user: Principal | null, @Param(id, UuidPipe) lotId: string): Promise<OwnLotDto> {
@@ -95,6 +99,7 @@ export class LotsController {
   @Post(':id/reopen')
   @HttpCode(200)
   @ApiOperation({ operationId: 'reopenLot', summary: 'Return a rejected or ended_unsold lot to draft' })
+  @ZUuidParam('id')
   @ZResponse(200, ownLotSchema)
   @ApiErrors(400, 401, 403, 404, 409)
   reopen(@CurrentUser() user: Principal | null, @Param(id, UuidPipe) lotId: string): Promise<OwnLotDto> {
@@ -105,6 +110,7 @@ export class LotsController {
   @Post(':id/approve')
   @HttpCode(200)
   @ApiOperation({ operationId: 'approveLot', summary: 'Publish a lot (moderator)' })
+  @ZUuidParam('id')
   @ZResponse(200, lotSchema)
   @ApiErrors(400, 401, 403, 404, 409)
   approve(@CurrentUser() user: Principal | null, @Param(id, UuidPipe) lotId: string): Promise<LotDto> {
@@ -115,6 +121,7 @@ export class LotsController {
   @Post(':id/reject')
   @HttpCode(200)
   @ApiOperation({ operationId: 'rejectLot', summary: 'Reject a lot with a reason (moderator)' })
+  @ZUuidParam('id')
   @ZBody(rejectLotSchema)
   @ZResponse(200, lotSchema)
   @ApiErrors(400, 401, 403, 404, 409)
@@ -125,6 +132,7 @@ export class LotsController {
   @Roles('seller', 'moderator')
   @Get(':id/history')
   @ApiOperation({ operationId: 'getLotHistory', summary: 'Lot event history (owner/moderators)' })
+  @ZUuidParam('id')
   @ZResponse(200, z.array(lotEventSchema))
   @ApiErrors(400, 401, 403, 404)
   async history(@CurrentUser() user: Principal | null, @Param(id, UuidPipe) lotId: string): Promise<z.infer<typeof lotEventSchema>[]> {

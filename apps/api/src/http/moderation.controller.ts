@@ -4,7 +4,7 @@ import { rejectLotSchema } from '@auction/shared';
 import type { LotDto, Principal } from '../lots/lots.js';
 import { ModerationService } from '../moderation/moderation.js';
 import { CurrentUser, Roles } from './auth.js';
-import { ApiErrors, ZBody, ZResponse } from './openapi-helpers.js';
+import { ApiErrors, ZBody, ZResponse, ZUuidParam } from './openapi-helpers.js';
 import { UuidPipe } from './pipes.js';
 import { lotSchema } from './schemas.js';
 
@@ -28,6 +28,7 @@ export class ModerationController {
   @Post('lots/:id/remove')
   @HttpCode(200)
   @ApiOperation({ operationId: 'removeLot', summary: 'Take a published lot down; deposits are released' })
+  @ZUuidParam('id')
   @ZBody(rejectLotSchema)
   @ZResponse(200, lotSchema)
   @ApiErrors(400, 401, 403, 404, 409)

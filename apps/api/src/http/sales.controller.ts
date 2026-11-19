@@ -7,7 +7,7 @@ import { Errors } from '../common/errors/app-error.js';
 import type { Principal } from '../lots/lots.js';
 import { SalesService, type SaleDto } from '../sales/sales.js';
 import { CurrentUser, Roles } from './auth.js';
-import { ApiErrors, IdempotencyKeyHeader, ZBody, ZQuery, ZResponse } from './openapi-helpers.js';
+import { ApiErrors, IdempotencyKeyHeader, ZBody, ZQuery, ZResponse, ZUuidParam } from './openapi-helpers.js';
 import { requireIdempotencyKey, UuidPipe } from './pipes.js';
 import { saleSchema, salesQuerySchema } from './schemas.js';
 
@@ -33,6 +33,7 @@ export class SalesController {
 
   @Get(':id')
   @ApiOperation({ operationId: 'getSale', summary: 'Sale details (buyer or seller of the lot only)' })
+  @ZUuidParam('id')
   @ZResponse(200, saleSchema)
   @ApiErrors(400, 401, 403, 404)
   get(@CurrentUser() user: Principal | null, @Param('id', UuidPipe) saleId: string): Promise<SaleDto> {
@@ -42,6 +43,7 @@ export class SalesController {
   @Post(':id/pay')
   @HttpCode(200)
   @ApiOperation({ operationId: 'paySale', summary: 'Pay for a won lot from the wallet (deposit is credited)' })
+  @ZUuidParam('id')
   @IdempotencyKeyHeader()
   @ZResponse(200, saleSchema, 'Sale paid; deposit credited and balance moved to escrow')
   @ApiErrors(400, 401, 403, 404, 409, 422)
@@ -61,6 +63,7 @@ export class SalesController {
   @Post(':id/ship')
   @HttpCode(200)
   @ApiOperation({ operationId: 'shipSale', summary: 'Mark a paid sale as shipped with a tracking number (seller)' })
+  @ZUuidParam('id')
   @ZBody(shipSaleSchema)
   @ZResponse(200, saleSchema)
   @ApiErrors(400, 401, 403, 404, 409)
@@ -75,6 +78,7 @@ export class SalesController {
   @Post(':id/confirm')
   @HttpCode(200)
   @ApiOperation({ operationId: 'confirmReceipt', summary: 'Confirm receipt of a shipped order; triggers payout to the seller' })
+  @ZUuidParam('id')
   @ZResponse(200, saleSchema)
   @ApiErrors(400, 401, 403, 404, 409)
   confirm(@CurrentUser() user: Principal | null, @Param('id', UuidPipe) saleId: string): Promise<SaleDto> {

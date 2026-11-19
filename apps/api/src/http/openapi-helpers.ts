@@ -1,5 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
-import { ApiBody, ApiHeader, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { ApiBody, ApiHeader, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import type { ApiBodyOptions } from '@nestjs/swagger';
 import { z, type ZodObject, type ZodRawShape, type ZodTypeAny } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -30,6 +30,9 @@ export function ZQuery<T extends ZodRawShape>(schema: ZodObject<T>): MethodDecor
 
 export const IdempotencyKeyHeader = (): MethodDecorator =>
   ApiHeader({ name: 'idempotency-key', required: true, description: 'Unique key per logical operation (8–128 chars)' });
+
+export const ZUuidParam = (name = 'id'): MethodDecorator =>
+  ApiParam({ name, required: true, schema: { type: 'string', format: 'uuid' } });
 
 export const errorBodySchema = z.object({
   code: z.string(),
